@@ -2,6 +2,23 @@ import { type Server, type InsertServer, type EdgeDevice, type InsertEdgeDevice,
 import { randomUUID } from "crypto";
 import { MCPServerManager } from './mcp/MCPServerManager';
 
+interface CertificateConfig {
+  orgSlug: string;
+  tunnelDomain: string;
+  endpoint: string;
+  timestamp: string;
+  edgeCertificate?: {
+    filename: string;
+    content: string;
+    size: number;
+  };
+  clientCertificate?: {
+    filename: string;
+    content: string;
+    size: number;
+  };
+}
+
 export interface IStorage {
   // Server operations
   getServer(id: string): Promise<Server | undefined>;
@@ -31,6 +48,14 @@ export interface IStorage {
   getAlerts(active?: boolean): Promise<any[]>;
   addAlert(alert: any): Promise<any>;
   resolveAlert(id: string): Promise<boolean>;
+  
+  // Config operations
+  getConfig(): Promise<any>;
+  saveConfig(config: any): Promise<any>;
+  
+  // Certificate operations
+  saveCertificateConfig(config: CertificateConfig): Promise<CertificateConfig>;
+  getCertificateConfig(): Promise<CertificateConfig | null>;
 }
 
 export class MemStorage implements IStorage {
@@ -39,6 +64,7 @@ export class MemStorage implements IStorage {
   private serverLogs: Map<string, ServerLog[]>;
   private mcpManager: MCPServerManager;
   private config: any;
+  private certificateConfig: CertificateConfig | null = null;
 
   constructor() {
     this.servers = new Map();
@@ -448,6 +474,20 @@ export class MemStorage implements IStorage {
     this.config = { ...this.config, ...newConfig };
     console.log('Configuration saved:', this.config);
     return this.config;
+  }
+
+  async saveCertificateConfig(config: CertificateConfig): Promise<CertificateConfig> {
+    this.certificateConfig = config;
+    console.log('Certificate configuration saved:', {
+      endpoint: config.endpoint,
+      edgeCert: config.edgeCertificate?.filename,
+      clientCert: config.clientCertificate?.filename
+    });
+    return this.certificateConfig;
+  }
+
+  async getCertificateConfig(): Promise<CertificateConfig | null> {
+    return this.certificateConfig;
   }
 }
 

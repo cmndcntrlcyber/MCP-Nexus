@@ -27,6 +27,10 @@ export default function ConfigPage() {
   const { toast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [certificateStatus, setCertificateStatus] = useState<{edge?: string; client?: string}>({});
+  const [certificates, setCertificates] = useState<{edge?: File; client?: File}>({});
+  const [deploymentResult, setDeploymentResult] = useState<{success: boolean; message: string; endpoint?: string} | null>(null);
   
   // Load config from localStorage on mount, then sync with backend
   const [config, setConfig] = useState(() => {
@@ -122,6 +126,96 @@ export default function ConfigPage() {
         title: "Configuration Reset",
         description: "Configuration has been reset to defaults.",
       });
+    }
+  };
+
+  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'edge' | 'client') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCertificates(prev => ({ ...prev, [type]: file }));
+      setCertificateStatus(prev => ({ ...prev, [type]: 'success' }));
+      toast({
+        title: `${type === 'edge' ? 'Edge' : 'Client'} Certificate Loaded`,
+        description: `${file.name} has been loaded successfully.`,
+      });
+    }
+  };
+
+  const handleClearCertificates = () => {
+    setCertificates({});
+    setCertificateStatus({});
+    setDeploymentResult(null);
+    // Clear file inputs
+    const edgeInput = document.getElementById('edgeCert') as HTMLInputElement;
+    const clientInput = document.getElementById('clientCert') as HTMLInputElement;
+    if (edgeInput) edgeInput.value = '';
+    if (clientInput) clientInput.value = '';
+    
+    toast({
+      title: "Certificates Cleared",
+      description: "All certificates have been removed.",
+    });
+  };
+
+  const handleDeployCertificates = async () => {
+    if (!config.orgSlug) {
+      toast({
+        title: "Missing Organization Slug",
+        description: "Please enter an organization slug before deploying.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeploying(true);
+    setDeploymentResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('orgSlug', config.orgSlug);
+      formData.append('tunnelDomain', config.tunnelDomain || 'c3s.nexus');
+      
+      if (certificates.edge) {
+        formData.append('edgeCertificate', certificates.edge);
+      }
+      if (certificates.client) {
+        formData.append('clientCertificate', certificates.client);
+      }
+
+      const response = await fetch('/api/certificates/deploy', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        const endpoint = `${config.orgSlug}.${config.tunnelDomain || 'c3s.nexus'}`;
+        setDeploymentResult({
+          success: true,
+          message: 'Certificates deployed successfully!',
+          endpoint: endpoint,
+        });
+        toast({
+          title: "Deployment Successful",
+          description: `Certificates deployed to ${endpoint}`,
+        });
+      } else {
+        throw new Error(result.error || 'Deployment failed');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to deploy certificates';
+      setDeploymentResult({
+        success: false,
+        message: errorMessage,
+      });
+      toast({
+        title: "Deployment Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -261,6 +355,110 @@ export default function ConfigPage() {
                   />
                   <Label htmlFor="autoRestart">Auto-restart failed servers</Label>
                 </div>
+              </div>
+            </div>
+
+            {/* Certificate Management */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <span className="material-icons text-red-500 mr-2">security</span>
+                Certificate Management
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="orgSlug">Organization Slug</Label>
+                    <Input
+                      id="orgSlug"
+                      placeholder="Enter organization slug"
+                      value={config.orgSlug || ''}
+                      onChange={(e) => setConfig({...config, orgSlug: e.target.value})}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Used as: {config.orgSlug || '$slug'}.{config.tunnelDomain || 'domain'}</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="tunnelDomain">Tunnel Domain</Label>
+                    <select
+                      id="tunnelDomain"
+                      value={config.tunnelDomain || 'c3s.nexus'}
+                      onChange={(e) => setConfig({...config, tunnelDomain: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="c3s.nexus">c3s.nexus</option>
+                      <option value="d3fend.nexus">d3fend.nexus</option>
+                      <option value="attck.nexus">attck.nexus</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edgeCert">Edge Certificate</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="edgeCert"
+                          type="file"
+                          accept=".pem,.crt,.cer"
+                          onChange={(e) => handleCertificateUpload(e, 'edge')}
+                          className="flex-1"
+                        />
+                        {certificateStatus.edge && (
+                          <span className={`text-sm ${certificateStatus.edge === 'success' ? 'text-green-600' : 'text-gray-500'}`}>
+                            {certificateStatus.edge === 'success' ? '✓' : '○'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Upload edge device certificate (.pem, .crt, .cer)</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="clientCert">Client Certificate</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="clientCert"
+                          type="file"
+                          accept=".pem,.crt,.cer"
+                          onChange={(e) => handleCertificateUpload(e, 'client')}
+                          className="flex-1"
+                        />
+                        {certificateStatus.client && (
+                          <span className={`text-sm ${certificateStatus.client === 'success' ? 'text-green-600' : 'text-gray-500'}`}>
+                            {certificateStatus.client === 'success' ? '✓' : '○'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Upload client authentication certificate (.pem, .crt, .cer)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleClearCertificates}
+                    disabled={!certificateStatus.edge && !certificateStatus.client}
+                  >
+                    Clear Certificates
+                  </Button>
+                  <Button
+                    onClick={handleDeployCertificates}
+                    disabled={!config.orgSlug || (!certificateStatus.edge && !certificateStatus.client) || isDeploying}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    <span className="material-icons text-lg mr-1">send</span>
+                    {isDeploying ? 'Deploying...' : 'Deploy to Tunnel'}
+                  </Button>
+                </div>
+
+                {deploymentResult && (
+                  <div className={`p-3 rounded-lg ${deploymentResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    <p className="text-sm font-medium">{deploymentResult.message}</p>
+                    {deploymentResult.endpoint && (
+                      <p className="text-xs mt-1">Endpoint: {deploymentResult.endpoint}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

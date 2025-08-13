@@ -4,6 +4,24 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertServerSchema, insertEdgeDeviceSchema, insertServerLogSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import { promises as fs } from "fs";
+import path from "path";
+
+// Configure multer for file uploads
+const upload = multer({ 
+  dest: '/tmp/certificates/',
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedExtensions = ['.pem', '.crt', '.cer'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only .pem, .crt, and .cer files are allowed.'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -516,6 +534,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(logs);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+  });
+
+  // Certificate deployment routes
+  app.post('/api/certificates/deploy', upload.fields([
+    { name: 'edgeCertificate', maxCount: 1 },
+    { name: 'clientCertificate', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const { orgSlug, tunnelDomain } = req.body;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      if (!orgSlug || !tunnelDomain) {
+        return res.status(400).json({ error: 'Organization slug and tunnel domain are required' });
+      }
+
+      if (!files.edgeCertificate && !files.clientCertificate) {
+        return res.status(400).json({ error: 'At least one certificate must be provided' });
+      }
+
+      // Construct the tunnel endpoint
+      const tunnelEndpoint = `https://${orgSlug}.${tunnelDomain}`;
+      
+      // Prepare certificate data
+      const certificateData: any = {
+        orgSlug,
+        tunnelDomain,
+        endpoint: tunnelEndpoint,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Read and include edge certificate if provided
+      if (files.edgeCertificate && files.edgeCertificate[0]) {
+        const edgeCertPath = files.edgeCertificate[0].path;
+        const edgeCertContent = await fs.readFile(edgeCertPath, 'utf-8');
+        certificateData.edgeCertificate = {
+          filename: files.edgeCertificate[0].originalname,
+          content: edgeCertContent,
+          size: files.edgeCertificate[0].size,
+        };
+        // Clean up temporary file
+        await fs.unlink(edgeCertPath).catch(() => {});
+      }
+
+      // Read and include client certificate if provided
+      if (files.clientCertificate && files.clientCertificate[0]) {
+        const clientCertPath = files.clientCertificate[0].path;
+        const clientCertContent = await fs.readFile(clientCertPath, 'utf-8');
+        certificateData.clientCertificate = {
+          filename: files.clientCertificate[0].originalname,
+          content: clientCertContent,
+          size: files.clientCertificate[0].size,
+        };
+        // Clean up temporary file
+        await fs.unlink(clientCertPath).catch(() => {});
+      }
+
+      // Store certificate configuration
+      await storage.saveCertificateConfig(certificateData);
+
+      // In a production environment, this would send the certificates to the actual tunnel endpoint
+      // For now, we'll simulate the deployment
+      console.log('Deploying certificates to tunnel:', tunnelEndpoint);
+      console.log('Organization:', orgSlug);
+      console.log('Domain:', tunnelDomain);
+      if (certificateData.edgeCertificate) {
+        console.log('Edge Certificate:', certificateData.edgeCertificate.filename);
+      }
+      if (certificateData.clientCertificate) {
+        console.log('Client Certificate:', certificateData.clientCertificate.filename);
+      }
+
+      // Simulate deployment to tunnel endpoint
+      // In production, this would make an HTTPS request to the tunnel endpoint
+      // to register the certificates
+      const deploymentResult = {
+        success: true,
+        endpoint: tunnelEndpoint,
+        certificates: {
+          edge: certificateData.edgeCertificate ? certificateData.edgeCertificate.filename : null,
+          client: certificateData.clientCertificate ? certificateData.clientCertificate.filename : null,
+        },
+        deployedAt: new Date().toISOString(),
+      };
+
+      // Broadcast certificate deployment
+      broadcast({
+        type: 'certificates_deployed',
+        data: {
+          orgSlug,
+          tunnelDomain,
+          endpoint: tunnelEndpoint,
+          certificates: deploymentResult.certificates,
+        }
+      });
+
+      res.json(deploymentResult);
+    } catch (error) {
+      console.error('Certificate deployment error:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Failed to deploy certificates' 
+      });
+    }
+  });
+
+  // Get certificate configuration
+  app.get('/api/certificates/config', async (req, res) => {
+    try {
+      const config = await storage.getCertificateConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch certificate configuration' });
     }
   });
 
