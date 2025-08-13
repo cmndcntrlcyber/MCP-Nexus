@@ -38,12 +38,28 @@ export class MemStorage implements IStorage {
   private edgeDevices: Map<string, EdgeDevice>;
   private serverLogs: Map<string, ServerLog[]>;
   private mcpManager: MCPServerManager;
+  private config: any;
 
   constructor() {
     this.servers = new Map();
     this.edgeDevices = new Map();
     this.serverLogs = new Map();
     this.mcpManager = new MCPServerManager();
+    
+    // Initialize default configuration
+    this.config = {
+      cloudflareAccountId: '523d80131d8cba13f765b80d6bb9e096',
+      workerUrl: 'https://mcp-api.yourdomain.com',
+      kvNamespaces: {
+        config: 'da1294711f1942749a6996bf3f35fe90',
+        deviceTokens: 'accf88bbd2b24eaba87de3722e4c1588',
+        serverState: 'c59b2dff9bcb46978f3b552885d7bf8a'
+      },
+      r2Bucket: 'mcp-logs',
+      autoRestart: true,
+      maxRestarts: 3,
+      heartbeatInterval: 30000
+    };
     
     // Setup MCP manager event handlers
     this.setupMCPEventHandlers();
@@ -421,6 +437,17 @@ export class MemStorage implements IStorage {
       return true;
     }
     return false;
+  }
+
+  // Configuration management
+  async getConfig(): Promise<any> {
+    return this.config;
+  }
+
+  async saveConfig(newConfig: any): Promise<any> {
+    this.config = { ...this.config, ...newConfig };
+    console.log('Configuration saved:', this.config);
+    return this.config;
   }
 }
 

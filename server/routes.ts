@@ -38,6 +38,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  // Configuration routes
+  app.get('/api/config', async (req, res) => {
+    try {
+      const config = await storage.getConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch configuration' });
+    }
+  });
+
+  app.post('/api/config', async (req, res) => {
+    try {
+      const config = await storage.saveConfig(req.body);
+      
+      broadcast({
+        type: 'config_updated',
+        data: config
+      });
+
+      res.json({ success: true, config });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to save configuration' });
+    }
+  });
+
   // Server management routes
   app.get('/api/servers', async (req, res) => {
     try {

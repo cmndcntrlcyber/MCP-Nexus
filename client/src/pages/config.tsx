@@ -1,26 +1,66 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWebSocket, type WebSocketMessage } from "@/lib/websocket";
+import { useToast } from "@/hooks/use-toast";
+
+const CONFIG_STORAGE_KEY = 'mcp-server-config';
+
+const defaultConfig = {
+  cloudflareAccountId: '523d80131d8cba13f765b80d6bb9e096',
+  workerUrl: 'https://mcp-api.yourdomain.com',
+  kvNamespaces: {
+    config: 'da1294711f1942749a6996bf3f35fe90',
+    deviceTokens: 'accf88bbd2b24eaba87de3722e4c1588',
+    serverState: 'c59b2dff9bcb46978f3b552885d7bf8a'
+  },
+  r2Bucket: 'mcp-logs',
+  autoRestart: true,
+  maxRestarts: 3,
+  heartbeatInterval: 30000
+};
 
 export default function ConfigPage() {
+  const { toast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState(false);
-  const [config, setConfig] = useState({
-    cloudflareAccountId: '523d80131d8cba13f765b80d6bb9e096',
-    workerUrl: 'https://mcp-api.yourdomain.com',
-    kvNamespaces: {
-      config: 'da1294711f1942749a6996bf3f35fe90',
-      deviceTokens: 'accf88bbd2b24eaba87de3722e4c1588',
-      serverState: 'c59b2dff9bcb46978f3b552885d7bf8a'
-    },
-    r2Bucket: 'mcp-logs',
-    autoRestart: true,
-    maxRestarts: 3,
-    heartbeatInterval: 30000
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Load config from localStorage on mount, then sync with backend
+  const [config, setConfig] = useState(() => {
+    const savedConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (savedConfig) {
+      try {
+        return JSON.parse(savedConfig);
+      } catch (error) {
+        console.error('Failed to parse saved config:', error);
+        return defaultConfig;
+      }
+    }
+    return defaultConfig;
   });
+
+  // Sync with backend on mount
+  useEffect(() => {
+    const loadBackendConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const backendConfig = await response.json();
+          // Merge backend config with local config (backend takes precedence)
+          setConfig(backendConfig);
+          localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(backendConfig));
+        }
+      } catch (error) {
+        console.error('Failed to load config from backend:', error);
+        // Keep using local config if backend fails
+      }
+    };
+
+    loadBackendConfig();
+  }, []);
 
   // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
@@ -33,10 +73,56 @@ export default function ConfigPage() {
 
   useWebSocket(handleWebSocketMessage);
 
-  const handleSaveConfig = () => {
-    // In a real implementation, this would save to the backend
-    console.log('Saving config:', config);
-    alert('Configuration saved successfully!');
+  // Auto-save config to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+  }, [config]);
+
+  const handleSaveConfig = async () => {
+    setIsSaving(true);
+    try {
+      // Save to localStorage immediately
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+      
+      // Also save to backend
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Configuration Saved",
+          description: "Your configuration has been saved successfully.",
+        });
+      } else {
+        throw new Error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving config:', error);
+      // Even if backend save fails, localStorage is already updated
+      toast({
+        title: "Configuration Saved Locally",
+        description: "Configuration saved to browser storage. Backend sync may have failed.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetConfig = () => {
+    if (confirm('Are you sure you want to reset to default configuration?')) {
+      setConfig(defaultConfig);
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(defaultConfig));
+      toast({
+        title: "Configuration Reset",
+        description: "Configuration has been reset to defaults.",
+      });
+    }
   };
 
   return (
@@ -222,12 +308,19 @@ export default function ConfigPage() {
           </div>
 
           <div className="mt-6 flex justify-end space-x-4">
-            <Button variant="outline">
+            <Button 
+              variant="outline" 
+              onClick={handleResetConfig}
+            >
               Reset to Defaults
             </Button>
-            <Button onClick={handleSaveConfig} className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              onClick={handleSaveConfig}
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               <span className="material-icons text-lg mr-1">save</span>
-              Save Configuration
+              {isSaving ? 'Saving...' : 'Save Configuration'}
             </Button>
           </div>
         </main>
