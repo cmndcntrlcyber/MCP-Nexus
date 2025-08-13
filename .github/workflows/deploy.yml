@@ -11,6 +11,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     
     steps:
       - name: Checkout repository
@@ -29,16 +32,29 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          # Add production environment variables here
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          # Dummy DATABASE_URL for build time (not used in frontend)
+          DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+          # Optional: Custom API URL for production
+          VITE_API_URL: ${{ secrets.VITE_API_URL || '' }}
       
       - name: Deploy to Cloudflare Pages
+        # Only deploy on main branch or if secrets are available
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && secrets.CLOUDFLARE_API_TOKEN != '')
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '523d80131d8cba13f765b80d6bb9e096' }}
           projectName: mcp-server-manager
-          directory: dist
+          directory: dist/public
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
           wranglerVersion: '3'
+      
+      - name: Upload build artifacts
+        # Always upload artifacts for debugging
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+          retention-days: 7
