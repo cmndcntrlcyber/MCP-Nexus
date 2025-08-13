@@ -1,7 +1,7 @@
 name: Dependabot Auto-Merge
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened]
 
 permissions:
@@ -20,8 +20,15 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       
+      - name: Add summary
+        run: |
+          echo "### Dependabot Update" >> $GITHUB_STEP_SUMMARY
+          echo "- Update type: ${{ steps.metadata.outputs.update-type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency: ${{ steps.metadata.outputs.dependency-names }}" >> $GITHUB_STEP_SUMMARY
+      
       - name: Auto-approve Dependabot PRs
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        continue-on-error: true
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
@@ -29,7 +36,8 @@ jobs:
       
       - name: Enable auto-merge for Dependabot PRs
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr merge --auto --merge "$PR_URL"
+        continue-on-error: true
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

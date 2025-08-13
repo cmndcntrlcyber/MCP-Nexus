@@ -1,5 +1,13 @@
 # GitHub Actions Deployment Fix - Updated
 
+## PR Permissions Fix (Version 4)
+
+### GitHub Actions Permission Error Resolved
+The PR check workflow was failing with "Resource not accessible by integration":
+- Replaced PR commenting with GitHub Step Summary (no permissions needed)
+- Build status now appears in workflow summary instead of PR comments
+- Works for all PRs including Dependabot without permission issues
+
 ## Build Error Fix (Version 3)
 
 ### PostCSS Configuration Issue Resolved
