@@ -74,6 +74,8 @@ The system now includes proper MCP server lifecycle management:
 - Real-time log streaming and error handling
 - Support for environment variables and command-line arguments
 - Edge device connectivity through Cloudflare infrastructure
+- Client certificate validation for secure device authentication
+- Device blocking/unblocking capabilities for security control
 
 ## Deployment Status
 - ✅ Development environment fully functional
@@ -81,4 +83,14 @@ The system now includes proper MCP server lifecycle management:
 - ✅ KV namespace IDs configured
 - ✅ R2 bucket configuration prepared
 - ✅ Real MCP server management implemented
+- ✅ Client certificate validation system implemented
+- ✅ Device blocking/security controls added
 - 🔄 Ready for production deployment to Cloudflare Workers
+
+## Recent Changes (August 13, 2025)
+- Added client certificate validation for edge devices
+- Implemented device blocking/unblocking functionality
+- Enhanced UI to display certificate status and block controls
+- Added certificate fields to edge device schema (fingerprint, subject, expiry)
+- Created middleware for certificate validation
+- Added security status indicators in the devices dashboard

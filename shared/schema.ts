@@ -24,9 +24,15 @@ export const servers = pgTable("servers", {
 export const edgeDevices = pgTable("edge_devices", {
   id: varchar("id").primaryKey(),
   name: text("name").notNull(),
-  status: text("status").notNull().default("offline"), // online, offline, error
+  status: text("status").notNull().default("offline"), // online, offline, blocked
   lastSeen: timestamp("last_seen"),
   metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  certificateFingerprint: text("certificate_fingerprint"), // SHA256 fingerprint of client cert
+  certificateSubject: text("certificate_subject"), // Certificate subject DN
+  certificateExpiry: timestamp("certificate_expiry"), // Certificate expiration date
+  blocked: boolean("blocked").default(false), // Whether device is blocked
+  blockedReason: text("blocked_reason"), // Reason for blocking
+  blockedAt: timestamp("blocked_at"), // When device was blocked
   createdAt: timestamp("created_at").defaultNow(),
 });
 

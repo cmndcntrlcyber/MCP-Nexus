@@ -145,8 +145,61 @@ export default function DevicesPage() {
     switch (status) {
       case 'online': return 'bg-green-500';
       case 'offline': return 'bg-red-500';
+      case 'blocked': return 'bg-yellow-500';
       default: return 'bg-gray-400';
     }
+  };
+
+  // Block/unblock mutations
+  const blockDeviceMutation = useMutation({
+    mutationFn: async ({ deviceId, reason }: { deviceId: string; reason: string }) => {
+      return apiRequest('POST', `/api/devices/${deviceId}/block`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
+      toast({
+        title: "Device Blocked",
+        description: "Edge device has been blocked successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to block device",
+        description: error?.message || "An error occurred while blocking the device.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unblockDeviceMutation = useMutation({
+    mutationFn: async (deviceId: string) => {
+      return apiRequest('POST', `/api/devices/${deviceId}/unblock`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
+      toast({
+        title: "Device Unblocked",
+        description: "Edge device has been unblocked successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to unblock device",
+        description: error?.message || "An error occurred while unblocking the device.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBlockDevice = (device: EdgeDevice) => {
+    const reason = prompt('Enter reason for blocking this device:');
+    if (reason) {
+      blockDeviceMutation.mutate({ deviceId: device.id, reason });
+    }
+  };
+
+  const handleUnblockDevice = (device: EdgeDevice) => {
+    unblockDeviceMutation.mutate(device.id);
   };
 
   const formatLastSeen = (lastSeen: Date | null) => {
@@ -196,7 +249,9 @@ export default function DevicesPage() {
                     <h3 className="font-semibold text-gray-900">{device.name}</h3>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${
-                    device.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    device.status === 'online' ? 'bg-green-100 text-green-800' : 
+                    device.status === 'blocked' ? 'bg-yellow-100 text-yellow-800' : 
+                    'bg-red-100 text-red-800'
                   }`}>
                     {device.status}
                   </span>
@@ -217,6 +272,20 @@ export default function DevicesPage() {
                       {formatLastSeen(device.lastSeen)}
                     </span>
                   </div>
+                  {device.certificateFingerprint && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Certificate:</span>
+                      <span className="text-xs">
+                        <span className="material-icons text-green-500 text-xs">verified_user</span>
+                      </span>
+                    </div>
+                  )}
+                  {device.blocked && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Blocked:</span>
+                      <span className="text-xs text-yellow-600">{device.blockedReason || 'Yes'}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -230,6 +299,25 @@ export default function DevicesPage() {
                       )}
                     </span>
                     <div className="flex space-x-2">
+                      {device.blocked ? (
+                        <button 
+                          onClick={() => handleUnblockDevice(device)}
+                          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                          title="Unblock device"
+                          data-testid={`button-unblock-${device.id}`}
+                        >
+                          <span className="material-icons text-base">lock_open</span>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleBlockDevice(device)}
+                          className="p-1 text-gray-400 hover:text-yellow-600 transition-colors"
+                          title="Block device"
+                          data-testid={`button-block-${device.id}`}
+                        >
+                          <span className="material-icons text-base">block</span>
+                        </button>
+                      )}
                       <button 
                         className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                         data-testid={`button-settings-${device.id}`}
@@ -259,16 +347,17 @@ export default function DevicesPage() {
                 <div className="flex items-start">
                   <span className="material-icons text-blue-600 mr-3">info</span>
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-2">Automatic Device Registration</h4>
+                    <h4 className="font-semibold text-blue-900 mb-2">Automatic Device Registration & Security</h4>
                     <p className="text-sm text-blue-800">
                       Devices connecting through Cloudflare Tunnels are automatically detected and registered. 
-                      When a new tunnel connection is established, the device will appear in this list with:
+                      Each device can be secured with client certificate validation:
                     </p>
                     <ul className="list-disc list-inside text-sm text-blue-800 mt-2">
-                      <li>Tunnel ID as the device identifier</li>
+                      <li><span className="material-icons text-green-500" style={{ fontSize: '14px', verticalAlign: 'middle' }}>verified_user</span> Certificate validation for secure authentication</li>
+                      <li><span className="material-icons text-yellow-600" style={{ fontSize: '14px', verticalAlign: 'middle' }}>block</span> Block/unblock devices to control access</li>
                       <li>Auto-generated name based on tunnel information</li>
                       <li>Connection metadata including region and IP</li>
-                      <li>Real-time status updates</li>
+                      <li>Real-time status updates and monitoring</li>
                     </ul>
                   </div>
                 </div>

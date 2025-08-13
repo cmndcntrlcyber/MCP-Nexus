@@ -260,21 +260,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/devices/:id/heartbeat', async (req, res) => {
     try {
-      const device = await storage.updateEdgeDevice(req.params.id, {
+      // Check if device is blocked
+      const device = await storage.getEdgeDevice(req.params.id);
+      if (device?.blocked) {
+        return res.status(403).json({ 
+          error: 'Device is blocked', 
+          reason: device.blockedReason 
+        });
+      }
+
+      const updatedDevice = await storage.updateEdgeDevice(req.params.id, {
         status: 'online',
         lastSeen: new Date(),
       });
 
-      if (device) {
+      if (updatedDevice) {
         broadcast({
           type: 'device_updated',
-          data: device
+          data: updatedDevice
         });
       }
 
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to update device heartbeat' });
+    }
+  });
+
+  // Block/unblock device endpoints
+  app.post('/api/devices/:id/block', async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const device = await storage.getEdgeDevice(req.params.id);
+      
+      if (!device) {
+        return res.status(404).json({ error: 'Device not found' });
+      }
+
+      const updatedDevice = await storage.updateEdgeDevice(req.params.id, {
+        blocked: true,
+        blockedReason: reason || 'Security policy violation',
+        blockedAt: new Date(),
+        status: 'blocked' as any,
+      });
+
+      if (updatedDevice) {
+        // Disconnect any active WebSocket connections for this device
+        broadcast({
+          type: 'device_blocked',
+          data: updatedDevice
+        });
+
+        // TODO: Force disconnect WebSocket for this device
+      }
+
+      res.json({ success: true, device: updatedDevice });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to block device' });
+    }
+  });
+
+  app.post('/api/devices/:id/unblock', async (req, res) => {
+    try {
+      const device = await storage.getEdgeDevice(req.params.id);
+      
+      if (!device) {
+        return res.status(404).json({ error: 'Device not found' });
+      }
+
+      const updatedDevice = await storage.updateEdgeDevice(req.params.id, {
+        blocked: false,
+        blockedReason: null,
+        blockedAt: null,
+        status: 'offline' as any,
+      });
+
+      if (updatedDevice) {
+        broadcast({
+          type: 'device_unblocked',
+          data: updatedDevice
+        });
+      }
+
+      res.json({ success: true, device: updatedDevice });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to unblock device' });
     }
   });
 

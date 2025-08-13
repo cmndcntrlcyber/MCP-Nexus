@@ -76,9 +76,45 @@ export class MemStorage implements IStorage {
 
   private initializeDevices() {
     const devices = [
-      { id: "edge-device-001", name: "Production Server 1", status: "online" as const, lastSeen: new Date(), metadata: {} },
-      { id: "edge-device-002", name: "Development Server", status: "offline" as const, lastSeen: new Date(Date.now() - 300000), metadata: {} },
-      { id: "edge-device-003", name: "Staging Server", status: "online" as const, lastSeen: new Date(Date.now() - 60000), metadata: {} },
+      { 
+        id: "edge-device-001", 
+        name: "Production Server 1", 
+        status: "online" as const, 
+        lastSeen: new Date(), 
+        metadata: {},
+        certificateFingerprint: "SHA256:abc123def456789012345678901234567890123456789012",
+        certificateSubject: "CN=prod-server-1.example.com,O=Example Corp,C=US",
+        certificateExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        blocked: false,
+        blockedReason: null,
+        blockedAt: null
+      },
+      { 
+        id: "edge-device-002", 
+        name: "Development Server", 
+        status: "offline" as const, 
+        lastSeen: new Date(Date.now() - 300000), 
+        metadata: {},
+        certificateFingerprint: null,
+        certificateSubject: null,
+        certificateExpiry: null,
+        blocked: false,
+        blockedReason: null,
+        blockedAt: null
+      },
+      { 
+        id: "edge-device-003", 
+        name: "Staging Server", 
+        status: "online" as const, 
+        lastSeen: new Date(Date.now() - 60000), 
+        metadata: {},
+        certificateFingerprint: "SHA256:xyz789uvw012345678901234567890123456789012345678",
+        certificateSubject: "CN=staging-server.example.com,O=Example Corp,C=US",
+        certificateExpiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 6 months from now
+        blocked: false,
+        blockedReason: null,
+        blockedAt: null
+      },
     ];
 
     devices.forEach(device => {
@@ -245,6 +281,12 @@ export class MemStorage implements IStorage {
       status: insertDevice.status || 'offline',
       lastSeen: insertDevice.lastSeen || null,
       metadata: insertDevice.metadata || {},
+      certificateFingerprint: insertDevice.certificateFingerprint || null,
+      certificateSubject: insertDevice.certificateSubject || null,
+      certificateExpiry: insertDevice.certificateExpiry || null,
+      blocked: insertDevice.blocked || false,
+      blockedReason: insertDevice.blockedReason || null,
+      blockedAt: insertDevice.blockedAt || null,
       createdAt: new Date(),
     };
     this.edgeDevices.set(insertDevice.id, device);
