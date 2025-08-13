@@ -1,8 +1,22 @@
-# GitHub Actions Deployment Fix
+# GitHub Actions Deployment Fix - Updated
 
-## Issues Resolved
+## Latest Issues Resolved (Version 2)
 
-The deployment failures shown in your screenshot were caused by:
+The PR Build Check failures were caused by:
+1. Missing permissions to write comments on PRs
+2. Trying to use `context.issue.number` which doesn't exist in PR context
+3. Both workflows triggering on PRs causing conflicts
+
+## Latest Changes (Version 2)
+
+### Workflow Separation
+- **deploy.yml**: Now ONLY runs on pushes to main branch
+- **pr-check.yml**: Handles ALL pull request checks
+- **dependabot-auto-merge.yml**: Auto-approves minor/patch updates
+
+## Previous Issues Resolved (Version 1)
+
+The initial deployment failures were caused by:
 1. Missing permissions for deployments in GitHub Actions
 2. Attempting to deploy Dependabot PRs without proper secrets
 3. Incorrect build output directory reference

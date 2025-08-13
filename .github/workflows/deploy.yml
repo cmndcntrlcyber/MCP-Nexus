@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build-and-deploy:
@@ -38,8 +35,8 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL || '' }}
       
       - name: Deploy to Cloudflare Pages
-        # Only deploy on main branch or if secrets are available
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && secrets.CLOUDFLARE_API_TOKEN != '')
+        # Only deploy on main branch
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
