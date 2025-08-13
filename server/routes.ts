@@ -295,8 +295,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastSeen: new Date(),
           metadata: {
             type: 'cloudflare-tunnel',
-            clientIp,
-            region,
+            clientIp: clientIp || '',
+            region: region || '',
             autoRegistered: true,
             registeredAt: new Date().toISOString()
           }
@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     if (cfRay && cfConnectingIp) {
       // This is a Cloudflare connection
-      const tunnelId = cfTunnelId || `cf-tunnel-${cfRay.slice(0, 8)}`;
+      const tunnelId = cfTunnelId || `cf-tunnel-${(cfRay as string).slice(0, 8)}`;
       
       // Auto-register tunnel device if not already registered
       storage.getEdgeDevice(tunnelId).then(device => {
@@ -358,9 +358,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastSeen: new Date(),
             metadata: {
               type: 'cloudflare-tunnel',
-              clientIp: cfConnectingIp,
-              region: cfIpcountry,
-              cfRay,
+              clientIp: cfConnectingIp as string,
+              region: cfIpcountry as string || '',
+              cfRay: cfRay as string,
               autoRegistered: true,
               detectedAt: new Date().toISOString()
             }
@@ -483,11 +483,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Check for high restart counts
-      servers.filter(s => s.restartCount > 2).forEach(server => {
+      servers.filter(s => (s.restartCount || 0) > 2).forEach(server => {
         alerts.push({
           id: `alert-restart-${server.id}`,
           title: 'High Restart Count',
-          message: `Server "${server.name}" has restarted ${server.restartCount} times`,
+          message: `Server "${server.name}" has restarted ${server.restartCount || 0} times`,
           severity: 'medium',
           timestamp: new Date().toISOString()
         });

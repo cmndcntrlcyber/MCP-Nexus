@@ -166,7 +166,7 @@ export class MemStorage implements IStorage {
       name: insertServer.name,
       deviceId: insertServer.deviceId,
       command: insertServer.command,
-      args: insertServer.args || [] as string[],
+      args: (insertServer.args || []) as string[],
       env: insertServer.env || {},
       status: insertServer.status || 'stopped',
       pid: null,
