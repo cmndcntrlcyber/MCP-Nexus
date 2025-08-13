@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(210, 25%, 7.8431%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(210, 25%, 7.8431%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(210, 25%, 7.8431%);
+  --primary: hsl(210, 79%, 46%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 7%, 26%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(0, 0%, 98%);
+  --muted-foreground: hsl(210, 25%, 7.8431%);
+  --accent: hsl(210, 79%, 96%);
+  --accent-foreground: hsl(210, 79%, 46%);
+  --destructive: hsl(4, 90%, 58%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --ring: hsl(210, 79%, 46%);
+  --chart-1: hsl(210, 79%, 46%);
+  --chart-2: hsl(122, 100%, 36%);
+  --chart-3: hsl(36, 93%, 56%);
+  --chart-4: hsl(152, 78%, 42%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(0, 0%, 100%);
+  --sidebar-foreground: hsl(210, 25%, 7.8431%);
+  --sidebar-primary: hsl(210, 79%, 46%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(210, 79%, 96%);
+  --sidebar-accent-foreground: hsl(210, 79%, 46%);
+  --sidebar-border: hsl(214, 32%, 91%);
+  --sidebar-ring: hsl(210, 79%, 46%);
+  --font-sans: 'Roboto', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: hsl(0, 0%, 0%);
+  --foreground: hsl(200, 6.6667%, 91.1765%);
+  --card: hsl(228, 9.8039%, 10%);
+  --card-foreground: hsl(0, 0%, 85.0980%);
+  --popover: hsl(0, 0%, 0%);
+  --popover-foreground: hsl(200, 6.6667%, 91.1765%);
+  --primary: hsl(210, 79%, 46%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(195, 15%, 95%);
+  --secondary-foreground: hsl(210, 25%, 7.8431%);
+  --muted: hsl(0, 0%, 9.4118%);
+  --muted-foreground: hsl(210, 3.3898%, 46.2745%);
+  --accent: hsl(206, 70%, 8%);
+  --accent-foreground: hsl(210, 79%, 46%);
+  --destructive: hsl(4, 90%, 58%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(210, 5.2632%, 14.9020%);
+  --input: hsl(207, 28%, 18%);
+  --ring: hsl(210, 79%, 46%);
+  --chart-1: hsl(210, 79%, 46%);
+  --chart-2: hsl(122, 100%, 36%);
+  --chart-3: hsl(36, 93%, 56%);
+  --chart-4: hsl(152, 78%, 42%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(228, 9.8039%, 10%);
+  --sidebar-foreground: hsl(0, 0%, 85.0980%);
+  --sidebar-primary: hsl(210, 79%, 46%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(206, 70%, 8%);
+  --sidebar-accent-foreground: hsl(210, 79%, 46%);
+  --sidebar-border: hsl(205, 16%, 26%);
+  --sidebar-ring: hsl(210, 79%, 46%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Roboto', sans-serif;
+  }
+}
+
+/* Material Design colors */
+.text-primary {
+  color: #1976D2;
+}
+
+.text-secondary {
+  color: #424242;
+}
+
+.text-success {
+  color: #4CAF50;
+}
+
+.text-warning {
+  color: #FF9800;
+}
+
+.text-error {
+  color: #F44336;
+}
+
+.bg-primary {
+  background-color: #1976D2;
+}
+
+.bg-success {
+  background-color: #4CAF50;
+}
+
+.bg-error {
+  background-color: #F44336;
+}
+
+.bg-warning {
+  background-color: #FF9800;
+}
+
+.bg-surface {
+  background-color: #FFFFFF;
+}
+
+.bg-background {
+  background-color: #FAFAFA;
+}
+
+/* Custom Material Icons integration */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
