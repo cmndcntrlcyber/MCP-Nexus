@@ -26,10 +26,12 @@ git push -u origin main
 Go to your repository Settings > Secrets and variables > Actions
 
 Add these secrets:
-- `CLOUDFLARE_API_TOKEN`: [Get from Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
+- `CLOUDFLARE_API_TOKEN`: Your token (see docs/SETUP_SECRETS.md for details)
 - `CLOUDFLARE_ACCOUNT_ID`: `523d80131d8cba13f765b80d6bb9e096`
 - `DATABASE_URL`: Your PostgreSQL connection string
 - `SESSION_SECRET`: Any secure random string
+
+📋 **Important**: Check `docs/SETUP_SECRETS.md` for your specific token and detailed instructions!
 
 ### Step 5: Deploy!
 The GitHub Action will automatically deploy to Cloudflare Pages.
