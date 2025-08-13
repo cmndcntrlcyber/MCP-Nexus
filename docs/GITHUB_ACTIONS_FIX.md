@@ -1,5 +1,14 @@
 # GitHub Actions Deployment Fix - Updated
 
+## Cloudflare Pages 404 Fix (Version 5)
+
+### Pages Project Creation Issue
+The deployment was failing with "Failed to get Pages project" 404 error:
+- This happens when the Pages project doesn't exist yet
+- Solution: Ensure API token has Pages:Edit permission
+- The project will be auto-created on first successful deployment
+- See docs/CLOUDFLARE_PAGES_SETUP.md for detailed setup
+
 ## PR Permissions Fix (Version 4)
 
 ### GitHub Actions Permission Error Resolved
