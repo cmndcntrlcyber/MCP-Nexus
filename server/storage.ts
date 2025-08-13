@@ -51,6 +51,66 @@ export class MemStorage implements IStorage {
       };
       this.edgeDevices.set(device.id, fullDevice);
     });
+
+    // Add some demo servers
+    const demoServers = [
+      {
+        name: "Filesystem MCP Server",
+        deviceId: "edge-device-001",
+        command: "npx",
+        args: ["@modelcontextprotocol/server-filesystem", "/data"],
+        env: {},
+        status: "running" as const,
+        autoRestart: true,
+        maxRestarts: 3,
+        restartCount: 0
+      },
+      {
+        name: "GitHub MCP Server",
+        deviceId: "edge-device-001",
+        command: "npx",
+        args: ["@modelcontextprotocol/server-github"],
+        env: { GITHUB_TOKEN: "demo-token" },
+        status: "stopped" as const,
+        autoRestart: true,
+        maxRestarts: 3,
+        restartCount: 2
+      },
+      {
+        name: "Weather API Server",
+        deviceId: "edge-device-003",
+        command: "node",
+        args: ["weather-server.js"],
+        env: { API_KEY: "weather-key" },
+        status: "running" as const,
+        autoRestart: true,
+        maxRestarts: 3,
+        restartCount: 0
+      }
+    ];
+
+    // Add demo servers synchronously for initial setup
+    demoServers.forEach((serverData) => {
+      const id = randomUUID();
+      const server: Server = {
+        id,
+        name: serverData.name,
+        deviceId: serverData.deviceId,
+        command: serverData.command,
+        args: serverData.args,
+        env: serverData.env,
+        status: serverData.status,
+        pid: serverData.status === 'running' ? Math.floor(Math.random() * 10000) + 1000 : null,
+        autoRestart: serverData.autoRestart,
+        maxRestarts: serverData.maxRestarts,
+        restartCount: serverData.restartCount,
+        uptime: serverData.status === 'running' ? new Date(Date.now() - Math.random() * 3600000) : null,
+        lastError: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.servers.set(id, server);
+    });
   }
 
   // Server operations
@@ -69,9 +129,17 @@ export class MemStorage implements IStorage {
   async createServer(insertServer: InsertServer): Promise<Server> {
     const id = randomUUID();
     const server: Server = {
-      ...insertServer,
       id,
+      name: insertServer.name,
+      deviceId: insertServer.deviceId,
+      command: insertServer.command,
+      args: insertServer.args || [],
+      env: insertServer.env || {},
+      status: insertServer.status || 'stopped',
       pid: null,
+      autoRestart: insertServer.autoRestart ?? true,
+      maxRestarts: insertServer.maxRestarts || 3,
+      restartCount: insertServer.restartCount || 0,
       uptime: null,
       lastError: null,
       createdAt: new Date(),
@@ -113,7 +181,11 @@ export class MemStorage implements IStorage {
 
   async createEdgeDevice(insertDevice: InsertEdgeDevice): Promise<EdgeDevice> {
     const device: EdgeDevice = {
-      ...insertDevice,
+      id: insertDevice.id,
+      name: insertDevice.name,
+      status: insertDevice.status || 'offline',
+      lastSeen: insertDevice.lastSeen || null,
+      metadata: insertDevice.metadata || {},
       createdAt: new Date(),
     };
     this.edgeDevices.set(insertDevice.id, device);

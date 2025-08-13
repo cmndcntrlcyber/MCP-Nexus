@@ -57,11 +57,12 @@ export function ServerList({ servers, onServerSelect, selectedServerId }: Server
     }
   };
 
-  const formatUptime = (uptime: Date | null) => {
+  const formatUptime = (uptime: Date | string | null) => {
     if (!uptime) return null;
     
     const now = new Date();
-    const diff = now.getTime() - uptime.getTime();
+    const uptimeDate = typeof uptime === 'string' ? new Date(uptime) : uptime;
+    const diff = now.getTime() - uptimeDate.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     

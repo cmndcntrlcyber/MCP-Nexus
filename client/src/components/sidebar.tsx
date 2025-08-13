@@ -17,14 +17,14 @@ export function Sidebar() {
       <nav className="p-4 space-y-2">
         {navItems.map((item) => (
           <Link key={item.path} href={item.path}>
-            <a className={`flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+            <div className={`flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
               location === item.path
                 ? 'bg-blue-600/10 text-blue-600'
                 : 'text-gray-600 hover:bg-gray-50'
             }`} data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}>
               <span className="material-icons">{item.icon}</span>
               <span>{item.label}</span>
-            </a>
+            </div>
           </Link>
         ))}
       </nav>

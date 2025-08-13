@@ -18,7 +18,7 @@ export function ServerDetails({ server }: ServerDetailsProps) {
 
   useEffect(() => {
     if (serverLogs) {
-      setLogs(serverLogs);
+      setLogs(Array.isArray(serverLogs) ? serverLogs : []);
     }
   }, [serverLogs]);
 
@@ -77,7 +77,8 @@ export function ServerDetails({ server }: ServerDetailsProps) {
     return `${(Math.random() * 5).toFixed(1)}%`;
   };
 
-  const formatTimestamp = (timestamp: Date | string) => {
+  const formatTimestamp = (timestamp: Date | string | null) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString();
   };

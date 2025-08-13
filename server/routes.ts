@@ -152,13 +152,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'running',
         uptime: new Date(),
         pid: Math.floor(Math.random() * 10000) + 1000,
-        restartCount: server.restartCount + 1,
+        restartCount: (server.restartCount || 0) + 1,
       });
 
       await storage.addServerLog({
         serverId: req.params.id,
         level: 'info',
-        message: `Server restarted (restart count: ${updatedServer?.restartCount})`
+        message: `Server restarted (restart count: ${updatedServer?.restartCount || 0})`
       });
 
       broadcast({
