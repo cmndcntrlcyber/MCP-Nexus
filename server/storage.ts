@@ -1,5 +1,6 @@
 import { type Server, type InsertServer, type EdgeDevice, type InsertEdgeDevice, type ServerLog, type InsertServerLog } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { MCPServerManager } from './mcp/MCPServerManager';
 
 export interface IStorage {
   // Server operations
@@ -27,14 +28,41 @@ export class MemStorage implements IStorage {
   private servers: Map<string, Server>;
   private edgeDevices: Map<string, EdgeDevice>;
   private serverLogs: Map<string, ServerLog[]>;
+  private mcpManager: MCPServerManager;
 
   constructor() {
     this.servers = new Map();
     this.edgeDevices = new Map();
     this.serverLogs = new Map();
+    this.mcpManager = new MCPServerManager();
+    
+    // Setup MCP manager event handlers
+    this.setupMCPEventHandlers();
 
     // Initialize with some edge devices for demo
     this.initializeDevices();
+  }
+
+  private setupMCPEventHandlers() {
+    this.mcpManager.on('server:started', (status: Server) => {
+      this.servers.set(status.id, status);
+    });
+
+    this.mcpManager.on('server:stopped', (status: Server) => {
+      this.servers.set(status.id, status);
+    });
+
+    this.mcpManager.on('server:error', (data: any) => {
+      console.error('MCP Server error:', data);
+    });
+
+    this.mcpManager.on('server:log', (data: any) => {
+      this.addServerLog({
+        serverId: data.id,
+        level: data.level || 'info',
+        message: data.log,
+      });
+    });
   }
 
   private initializeDevices() {

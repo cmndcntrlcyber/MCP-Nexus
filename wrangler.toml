@@ -1,0 +1,34 @@
+name = "mcp-manager"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = true
+account_id = "523d80131d8cba13f765b80d6bb9e096"
+
+[[kv_namespaces]]
+binding = "KV_CONFIG"
+id = "da1294711f1942749a6996bf3f35fe90"
+
+[[kv_namespaces]]
+binding = "KV_DEVICE_TOKENS"
+id = "accf88bbd2b24eaba87de3722e4c1588"
+
+[[kv_namespaces]]
+binding = "KV_SERVER_STATE"
+id = "c59b2dff9bcb46978f3b552885d7bf8a"
+
+[[r2_buckets]]
+binding = "R2_LOGS"
+bucket_name = "mcp-logs"
+
+[[durable_objects.bindings]]
+name = "SERVERS"
+class_name = "ServerManager"
+
+[[durable_objects.bindings]]
+name = "CONNECTIONS"
+class_name = "ConnectionHub"
+
+[env.production]
+routes = [
+  { pattern = "mcp-api.yourdomain.com/*", zone_name = "yourdomain.com" }
+]
