@@ -38,6 +38,35 @@ export const serverLogs = pgTable("server_logs", {
   timestamp: timestamp("timestamp").defaultNow(),
 });
 
+export const systemMetrics = pgTable("system_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cpu: integer("cpu").notNull(),
+  memory: integer("memory").notNull(),
+  disk: integer("disk").notNull(),
+  network: integer("network").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const serverMetrics = pgTable("server_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverId: text("server_id").notNull(),
+  cpu: integer("cpu").notNull(),
+  memory: integer("memory").notNull(),
+  requestsPerSecond: integer("requests_per_second").notNull(),
+  avgResponseTime: integer("avg_response_time").notNull(),
+  errorRate: integer("error_rate").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const alerts = pgTable("alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  severity: text("severity").notNull(), // low, medium, high, critical
+  resolved: boolean("resolved").default(false),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
 export const insertServerSchema = createInsertSchema(servers).omit({
   id: true,
   pid: true,
@@ -56,9 +85,30 @@ export const insertServerLogSchema = createInsertSchema(serverLogs).omit({
   timestamp: true,
 });
 
+export const insertSystemMetricsSchema = createInsertSchema(systemMetrics).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertServerMetricsSchema = createInsertSchema(serverMetrics).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertAlertSchema = createInsertSchema(alerts).omit({
+  id: true,
+  timestamp: true,
+});
+
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
 export type InsertEdgeDevice = z.infer<typeof insertEdgeDeviceSchema>;
 export type EdgeDevice = typeof edgeDevices.$inferSelect;
 export type InsertServerLog = z.infer<typeof insertServerLogSchema>;
 export type ServerLog = typeof serverLogs.$inferSelect;
+export type InsertSystemMetrics = z.infer<typeof insertSystemMetricsSchema>;
+export type SystemMetrics = typeof systemMetrics.$inferSelect;
+export type InsertServerMetrics = z.infer<typeof insertServerMetricsSchema>;
+export type ServerMetrics = typeof serverMetrics.$inferSelect;
+export type InsertAlert = z.infer<typeof insertAlertSchema>;
+export type Alert = typeof alerts.$inferSelect;

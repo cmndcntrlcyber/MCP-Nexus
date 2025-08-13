@@ -252,6 +252,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monitoring endpoints
+  app.get('/api/monitoring/metrics', async (req, res) => {
+    try {
+      // Simulate system metrics - in production this would use actual system monitoring
+      const metrics = {
+        cpu: Math.floor(Math.random() * 30 + 10), // 10-40%
+        memory: Math.floor(Math.random() * 40 + 20), // 20-60%
+        disk: Math.floor(Math.random() * 50 + 30), // 30-80%
+        network: Math.floor(Math.random() * 1000000), // bytes per second
+        timestamp: new Date().toISOString(),
+      };
+
+      // Broadcast metrics to WebSocket clients
+      broadcast({
+        type: 'metrics_update',
+        data: metrics
+      });
+
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch metrics' });
+    }
+  });
+
+  app.get('/api/monitoring/servers', async (req, res) => {
+    try {
+      const servers = await storage.getAllServers();
+      const runningServers = servers.filter(s => s.status === 'running');
+      
+      const serverMetrics = runningServers.map(server => ({
+        serverId: server.id,
+        cpu: Math.floor(Math.random() * 80), // 0-80%
+        memory: Math.floor(Math.random() * 512), // 0-512 MB
+        requestsPerSecond: Math.floor(Math.random() * 100),
+        avgResponseTime: Math.floor(Math.random() * 200), // 0-200ms
+        errorRate: parseFloat((Math.random() * 5).toFixed(2)), // 0-5%
+        uptime: server.uptime ? 
+          Math.floor((new Date().getTime() - new Date(server.uptime).getTime()) / 1000) : 0
+      }));
+
+      // Broadcast server metrics to WebSocket clients
+      serverMetrics.forEach(metric => {
+        broadcast({
+          type: 'server_metrics',
+          data: metric
+        });
+      });
+
+      res.json(serverMetrics);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch server metrics' });
+    }
+  });
+
+  app.get('/api/monitoring/alerts', async (req, res) => {
+    try {
+      const servers = await storage.getAllServers();
+      const alerts: any[] = [];
+      
+      // Check for servers in error state
+      servers.filter(s => s.status === 'error').forEach(server => {
+        alerts.push({
+          id: `alert-${server.id}`,
+          title: 'Server Error',
+          message: `Server "${server.name}" is in error state: ${server.lastError || 'Unknown error'}`,
+          severity: 'high',
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Check for high restart counts
+      servers.filter(s => s.restartCount > 2).forEach(server => {
+        alerts.push({
+          id: `alert-restart-${server.id}`,
+          title: 'High Restart Count',
+          message: `Server "${server.name}" has restarted ${server.restartCount} times`,
+          severity: 'medium',
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch alerts' });
+    }
+  });
+
+  app.get('/api/monitoring/health', async (req, res) => {
+    try {
+      const servers = await storage.getAllServers();
+      const devices = await storage.getAllEdgeDevices();
+      
+      const health = {
+        healthy: servers.filter(s => s.status === 'running').length === servers.length,
+        totalServers: servers.length,
+        healthyServers: servers.filter(s => s.status === 'running').length,
+        totalDevices: devices.length,
+        onlineDevices: devices.filter(d => d.status === 'online').length,
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch health status' });
+    }
+  });
+
   // Simulate some log entries for demo
   setTimeout(async () => {
     const servers = await storage.getAllServers();
@@ -281,6 +388,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }, 3000 + Math.random() * 5000);
     }
   }, 1000);
+
+  // Simulate periodic metrics updates
+  setInterval(async () => {
+    const metrics = {
+      cpu: Math.floor(Math.random() * 30 + 10),
+      memory: Math.floor(Math.random() * 40 + 20),
+      disk: Math.floor(Math.random() * 50 + 30),
+      network: Math.floor(Math.random() * 1000000),
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcast({
+      type: 'metrics_update',
+      data: metrics
+    });
+  }, 5000);
 
   return httpServer;
 }

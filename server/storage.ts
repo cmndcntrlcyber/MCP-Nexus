@@ -22,6 +22,15 @@ export interface IStorage {
   getServerLogs(serverId: string, limit?: number): Promise<ServerLog[]>;
   addServerLog(log: InsertServerLog): Promise<ServerLog>;
   clearServerLogs(serverId: string): Promise<boolean>;
+
+  // Monitoring operations
+  getSystemMetrics(limit?: number): Promise<any[]>;
+  addSystemMetrics(metrics: any): Promise<any>;
+  getServerMetrics(serverId: string, limit?: number): Promise<any[]>;
+  addServerMetrics(metrics: any): Promise<any>;
+  getAlerts(active?: boolean): Promise<any[]>;
+  addAlert(alert: any): Promise<any>;
+  resolveAlert(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -293,6 +302,83 @@ export class MemStorage implements IStorage {
   async clearServerLogs(serverId: string): Promise<boolean> {
     this.serverLogs.delete(serverId);
     return true;
+  }
+
+  // Monitoring operations
+  private systemMetrics: any[] = [];
+  private serverMetricsMap: Map<string, any[]> = new Map();
+  private alerts: any[] = [];
+
+  async getSystemMetrics(limit: number = 100): Promise<any[]> {
+    return this.systemMetrics.slice(-limit);
+  }
+
+  async addSystemMetrics(metrics: any): Promise<any> {
+    const metric = {
+      ...metrics,
+      id: randomUUID(),
+      timestamp: new Date(),
+    };
+    this.systemMetrics.push(metric);
+    // Keep only last 1000 metrics
+    if (this.systemMetrics.length > 1000) {
+      this.systemMetrics = this.systemMetrics.slice(-1000);
+    }
+    return metric;
+  }
+
+  async getServerMetrics(serverId: string, limit: number = 100): Promise<any[]> {
+    const metrics = this.serverMetricsMap.get(serverId) || [];
+    return metrics.slice(-limit);
+  }
+
+  async addServerMetrics(metrics: any): Promise<any> {
+    const metric = {
+      ...metrics,
+      id: randomUUID(),
+      timestamp: new Date(),
+    };
+    
+    if (!this.serverMetricsMap.has(metrics.serverId)) {
+      this.serverMetricsMap.set(metrics.serverId, []);
+    }
+    
+    const serverMetrics = this.serverMetricsMap.get(metrics.serverId)!;
+    serverMetrics.push(metric);
+    
+    // Keep only last 1000 metrics per server
+    if (serverMetrics.length > 1000) {
+      this.serverMetricsMap.set(metrics.serverId, serverMetrics.slice(-1000));
+    }
+    
+    return metric;
+  }
+
+  async getAlerts(active: boolean = true): Promise<any[]> {
+    if (active) {
+      return this.alerts.filter(a => !a.resolved);
+    }
+    return this.alerts;
+  }
+
+  async addAlert(alert: any): Promise<any> {
+    const newAlert = {
+      ...alert,
+      id: randomUUID(),
+      resolved: false,
+      timestamp: new Date(),
+    };
+    this.alerts.push(newAlert);
+    return newAlert;
+  }
+
+  async resolveAlert(id: string): Promise<boolean> {
+    const alert = this.alerts.find(a => a.id === id);
+    if (alert) {
+      alert.resolved = true;
+      return true;
+    }
+    return false;
   }
 }
 
