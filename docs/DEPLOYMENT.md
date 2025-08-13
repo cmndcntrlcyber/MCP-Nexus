@@ -1,242 +1,224 @@
-# Deployment Guide for MCP Server Manager
-
-This guide provides detailed instructions for deploying the MCP Server Manager to Cloudflare Pages using GitHub Actions.
+# Complete Deployment Guide for MCP Server Manager
 
 ## Prerequisites
 
-Before starting the deployment process, ensure you have:
+Before deploying, ensure you have:
+1. A GitHub repository with the code
+2. A Cloudflare account (free tier works)
+3. The application builds successfully locally (`npm run build`)
 
-1. **GitHub Account**: Required for hosting the repository and running CI/CD
-2. **Cloudflare Account**: Required for hosting the application
-3. **PostgreSQL Database**: Production database (recommend Neon or Supabase)
-4. **Node.js 20+**: For local testing before deployment
+## Step 1: Generate Cloudflare API Token
 
-## Step 1: Prepare Your Repository
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
+2. Click **Create Token**
+3. Select **Custom token** template
+4. Configure permissions:
+   - **Account** → Cloudflare Pages: Edit
+   - **Account** → Account Settings: Read
+   - **Zone** → Zone Settings: Read (optional for custom domains)
+5. Account Resources:
+   - Include → `523d80131d8cba13f765b80d6bb9e096` (your account ID)
+6. Click **Continue to summary**
+7. Click **Create Token**
+8. **Copy the token immediately** (you won't see it again!)
 
-### 1.1 Create a Private GitHub Repository
-
-1. Go to [GitHub](https://github.com/new)
-2. Name your repository (e.g., `mcp-server-manager`)
-3. Set visibility to **Private**
-4. Do not initialize with README (we already have one)
-5. Click "Create repository"
-
-### 1.2 Push Code to GitHub
-
-```bash
-# Initialize git (if not already done)
-git init
-
-# Add all files
-git add .
-
-# Commit changes
-git commit -m "Initial commit: MCP Server Manager"
-
-# Add your GitHub repository as origin
-git remote add origin https://github.com/YOUR_USERNAME/mcp-server-manager.git
-
-# Push to main branch
-git push -u origin main
-```
-
-## Step 2: Set Up Cloudflare
-
-### 2.1 Create Cloudflare API Token
-
-1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Go to **My Profile** > **API Tokens**
-3. Click **Create Token**
-4. Use **Custom token** template with these permissions:
-   - **Account** - Cloudflare Pages:Edit
-   - **Account** - Account Settings:Read
-   - **Zone** - Page Rules:Edit (if using custom domain)
-5. Set Account Resources to your specific account
-6. Click **Continue to summary** > **Create Token**
-7. **Copy the token** (you won't see it again!)
-
-### 2.2 Get Your Account ID
-
-1. In Cloudflare Dashboard, select your account
-2. Find Account ID in the right sidebar
-3. Copy it (should be: `523d80131d8cba13f765b80d6bb9e096`)
-
-## Step 3: Configure GitHub Secrets
-
-### 3.1 Navigate to Repository Settings
+## Step 2: Add GitHub Secrets
 
 1. Go to your GitHub repository
-2. Click **Settings** tab
-3. Navigate to **Secrets and variables** > **Actions**
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Add the following secret:
+   - **Name:** `CLOUDFLARE_API_TOKEN`
+   - **Value:** [Your token from Step 1]
+5. Click **Add secret**
 
-### 3.2 Add Required Secrets
+## Step 3: Manual Cloudflare Pages Setup (Alternative Method)
 
-Click **New repository secret** for each:
+If automatic deployment fails, you can manually create the Pages project:
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `CLOUDFLARE_API_TOKEN` | Your API token from Step 2.1 | Authentication for Cloudflare |
-| `CLOUDFLARE_ACCOUNT_ID` | `523d80131d8cba13f765b80d6bb9e096` | Your Cloudflare account ID |
-| `DATABASE_URL` | `postgresql://...` | Production database connection string |
-| `SESSION_SECRET` | Generate a secure random string | For session encryption |
+### Create Pages Project in Cloudflare Dashboard
 
-### 3.3 Add Optional Secrets
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Navigate to **Workers & Pages** → **Pages**
+3. Click **Create a project**
+4. Choose **Connect to Git**
+5. Select your GitHub repository
+6. Configure build settings:
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `VITE_API_URL` | `https://your-domain.com` | Custom API domain (if applicable) |
+   **Build Settings:**
+   - **Framework preset:** None
+   - **Build command:** `npm run build`
+   - **Build output directory:** `/dist/public`
+   
+   **Advanced Settings:**
+   - **Root directory:** `/` (leave as default)
+   - **Environment variables:** Add if needed:
+     - `NODE_VERSION`: `20`
+     - Any other production variables
 
-## Step 4: Configure Production Database
+7. Click **Save and Deploy**
 
-### 4.1 Using Neon Database (Recommended)
+### Important Build Configuration Notes
 
-1. Sign up at [Neon](https://neon.tech)
-2. Create a new project
-3. Copy the connection string
-4. Add it as `DATABASE_URL` secret in GitHub
+- **Framework preset:** Must be set to "None" (not auto-detected)
+- **Build command:** `npm run build`
+- **Build output directory:** `/dist/public` (NOT just `/` or `/dist`)
+- The build creates both server files and public assets
+- Only the public assets in `/dist/public` are deployed to Pages
 
-### 4.2 Database Schema Setup
+## Step 4: Trigger Deployment
 
-The GitHub Action will handle database migrations automatically. Ensure your database user has permission to create tables.
+### Via GitHub Actions (Recommended)
 
-## Step 5: Deploy to Cloudflare Pages
+1. Push any change to the main branch:
+```bash
+git add .
+git commit -m "Deploy to Cloudflare Pages"
+git push origin main
+```
 
-### 5.1 Initial Deployment
+2. Monitor deployment:
+   - Go to GitHub → Actions tab
+   - Watch the "Deploy to Cloudflare Pages" workflow
+   - Check for any errors in the logs
 
-1. Make a small change to trigger deployment:
-   ```bash
-   echo "# Deployed on $(date)" >> README.md
-   git add README.md
-   git commit -m "Trigger initial deployment"
-   git push origin main
-   ```
+### Via Cloudflare Dashboard (Manual)
 
-2. Go to **Actions** tab in your GitHub repository
-3. Watch the "Deploy to Cloudflare Pages" workflow run
-4. Once complete, find your site URL in the workflow logs
+1. Go to Cloudflare Dashboard → Workers & Pages
+2. Select your project
+3. Click **Create deployment**
+4. Choose branch and deploy
 
-### 5.2 Verify Deployment
+## Step 5: Verify Deployment
 
-1. Visit the Cloudflare Pages dashboard
-2. Find your project (`mcp-server-manager`)
-3. Click on it to see deployment details
-4. Your site will be available at:
+1. Check deployment status in Cloudflare Dashboard
+2. Once successful, your app will be available at:
    - `https://mcp-server-manager.pages.dev`
    - Or your custom domain if configured
 
-## Step 6: Configure Custom Domain (Optional)
+## Environment Variables
 
-### 6.1 Add Custom Domain
+### Production Variables (Set in Cloudflare Pages)
 
-1. In Cloudflare Pages project settings
-2. Go to **Custom domains** tab
-3. Click **Set up a custom domain**
-4. Enter your domain name
-5. Follow DNS configuration instructions
+Navigate to **Settings** → **Environment variables** in your Pages project:
 
-### 6.2 Update Environment Variables
+- `DATABASE_URL`: Your production PostgreSQL connection string
+- `SESSION_SECRET`: Generate with `openssl rand -base64 32`
+- `NODE_VERSION`: `20` (if needed)
 
-Add your custom domain to GitHub Secrets:
-- `VITE_API_URL`: `https://your-custom-domain.com`
+### Build-time Variables (Set in GitHub Secrets)
 
-## Step 7: Production Environment Variables
-
-### 7.1 In Cloudflare Pages Dashboard
-
-1. Go to your project settings
-2. Navigate to **Environment variables**
-3. Add production variables:
-   - `NODE_ENV`: `production`
-   - `DATABASE_URL`: Your production database URL
-   - `SESSION_SECRET`: Secure random string
+These are used during the build process:
+- `CLOUDFLARE_API_TOKEN`: Your API token
+- `CLOUDFLARE_ACCOUNT_ID`: `523d80131d8cba13f765b80d6bb9e096` (optional, hardcoded as fallback)
 
 ## Troubleshooting
 
 ### Build Failures
 
-1. Check GitHub Actions logs for errors
-2. Ensure all secrets are properly set
-3. Verify Node.js version compatibility
+1. **PostCSS/Tailwind errors:**
+   - Ensure `postcss.config.cjs` exists (not `.js`)
+   - Check that `@tailwindcss/vite` is not installed
 
-### Database Connection Issues
+2. **Module not found errors:**
+   - Run `npm ci` locally to verify dependencies
+   - Check `package.json` for missing dependencies
 
-1. Verify `DATABASE_URL` is correct
-2. Check database is accessible from Cloudflare
-3. Ensure SSL is properly configured
+3. **Build output not found:**
+   - Verify build output directory is `/dist/public`
+   - Check that `npm run build` creates this directory
 
-### Deployment Not Triggering
+### Deployment Failures
 
-1. Ensure GitHub Actions are enabled
-2. Check workflow file syntax
-3. Verify branch name matches workflow trigger
+1. **404 Error - Pages project not found:**
+   - The project doesn't exist yet
+   - Either wait for auto-creation or create manually
+   - Verify API token has Pages:Edit permission
 
-## Security Best Practices
+2. **403 Error - Forbidden:**
+   - API token lacks necessary permissions
+   - Regenerate token with correct permissions
 
-1. **Never commit secrets** to the repository
-2. **Use strong passwords** for database
-3. **Rotate API tokens** regularly
-4. **Enable 2FA** on GitHub and Cloudflare
-5. **Restrict database access** to Cloudflare IPs only
-6. **Use environment-specific** configurations
+3. **401 Error - Unauthorized:**
+   - API token not set in GitHub secrets
+   - Token is invalid or expired
+
+### GitHub Actions Failures
+
+1. **Permission errors on PRs:**
+   - This is expected for security
+   - Check workflow summary instead of PR comments
+   - Dependabot PRs have restricted permissions
+
+2. **Artifacts not uploaded:**
+   - Check build completes successfully
+   - Verify `dist/public` directory exists
+
+## Production Considerations
+
+### Database Setup
+
+1. Use a production PostgreSQL database (e.g., Neon, Supabase)
+2. Set `DATABASE_URL` in Cloudflare Pages environment variables
+3. Run migrations if needed
+
+### Security
+
+1. **Never commit secrets to code**
+2. Use environment variables for sensitive data
+3. Rotate API tokens regularly
+4. Enable 2FA on GitHub and Cloudflare accounts
+
+### Custom Domain
+
+1. Go to Pages project → **Custom domains**
+2. Add your domain
+3. Configure DNS records as instructed
+4. SSL certificate is automatic
 
 ## Monitoring
 
-### GitHub Actions
-
-- Monitor workflow runs in Actions tab
-- Set up email notifications for failures
-- Review deployment logs regularly
-
 ### Cloudflare Analytics
 
-- Check Pages Analytics for traffic
-- Monitor Web Analytics for performance
-- Review Workers Analytics if using Workers
+- View in Pages project dashboard
+- Monitor request counts, errors, performance
 
-## Rollback Procedure
+### GitHub Actions
 
-If deployment fails or causes issues:
+- Check Actions tab for deployment history
+- Set up notifications for failed deployments
 
-1. **Via Cloudflare Dashboard**:
-   - Go to project > Deployments
-   - Find previous successful deployment
+### Application Logs
+
+- Use Cloudflare Workers logs for debugging
+- Implement error tracking (e.g., Sentry)
+
+## Rollback Process
+
+If deployment causes issues:
+
+1. **Via Cloudflare Dashboard:**
+   - Go to Deployments tab
+   - Find previous working deployment
    - Click "Rollback to this deployment"
 
-2. **Via GitHub**:
+2. **Via Git:**
    - Revert the problematic commit
    - Push to trigger new deployment
 
-## Maintenance
-
-### Regular Updates
-
-1. Keep dependencies updated:
-   ```bash
-   npm update
-   npm audit fix
-   ```
-
-2. Update GitHub Actions:
-   - Check for new versions of actions
-   - Update Node.js version as needed
-
-3. Database maintenance:
-   - Regular backups
-   - Monitor performance
-   - Clean up old logs
-
 ## Support
 
-For deployment issues:
-- Check [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
-- Review [GitHub Actions Docs](https://docs.github.com/en/actions)
-- Open an issue in the repository
+- **Build issues:** Check `docs/GITHUB_ACTIONS_FIX.md`
+- **API token issues:** Check `docs/CLOUDFLARE_PAGES_SETUP.md`
+- **General setup:** Check `docs/SETUP_SECRETS.md`
 
-## Next Steps
+## Quick Checklist
 
-After successful deployment:
-1. Configure monitoring and alerts
-2. Set up custom domain (if needed)
-3. Implement authentication
-4. Configure backup strategies
-5. Set up staging environment
+- [ ] Cloudflare API token generated with Pages:Edit permission
+- [ ] GitHub secret `CLOUDFLARE_API_TOKEN` added
+- [ ] Build works locally (`npm run build`)
+- [ ] PostCSS config is `.cjs` not `.js`
+- [ ] Build output directory set to `/dist/public`
+- [ ] First deployment triggered
+- [ ] Production environment variables configured
+- [ ] Site accessible at `.pages.dev` domain

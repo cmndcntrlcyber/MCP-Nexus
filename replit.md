@@ -88,12 +88,17 @@ The system now includes proper MCP server lifecycle management:
 - 🔄 Ready for production deployment to Cloudflare Workers
 
 ## Recent Changes (August 13, 2025)
-- Added client certificate validation for edge devices
-- Implemented device blocking/unblocking functionality
-- Enhanced UI to display certificate status and block controls
-- Added certificate fields to edge device schema (fingerprint, subject, expiry)
-- Created middleware for certificate validation
-- Added security status indicators in the devices dashboard
-- Implemented force deletion of edge devices with active servers
-- Enhanced delete dialog to warn about server removal
-- Device deletion now automatically stops and removes all associated servers
+- Fixed GitHub Actions deployment issues:
+  - Resolved PostCSS configuration conflicts (renamed to .cjs)
+  - Removed conflicting @tailwindcss/vite package
+  - Fixed PR permission errors with Step Summary approach
+  - Documented Cloudflare Pages deployment process
+- Created comprehensive deployment documentation:
+  - API token generation with correct permissions
+  - Manual Pages project setup instructions
+  - Build configuration settings for Cloudflare
+  - Troubleshooting guide for common issues
+- Previous updates:
+  - Added client certificate validation for edge devices
+  - Implemented device blocking/unblocking functionality
+  - Enhanced UI to display certificate status and block controls
