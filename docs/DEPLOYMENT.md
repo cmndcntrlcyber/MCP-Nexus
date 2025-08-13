@@ -1,90 +1,242 @@
-# MCP Server Manager - Deployment Guide
+# Deployment Guide for MCP Server Manager
 
-## Overview
-This MCP Server Manager is designed for deployment on Cloudflare Workers with real MCP server management capabilities. The system manages actual MCP server processes across distributed edge devices using Cloudflare Tunnels.
+This guide provides detailed instructions for deploying the MCP Server Manager to Cloudflare Pages using GitHub Actions.
 
 ## Prerequisites
-- Cloudflare account with Workers enabled
-- KV namespaces created (IDs provided in configuration)
-- R2 storage enabled
-- Cloudflare Tunnels set up for edge devices
 
-## Deployment Steps
+Before starting the deployment process, ensure you have:
 
-### 1. Cloudflare Workers Deployment
+1. **GitHub Account**: Required for hosting the repository and running CI/CD
+2. **Cloudflare Account**: Required for hosting the application
+3. **PostgreSQL Database**: Production database (recommend Neon or Supabase)
+4. **Node.js 20+**: For local testing before deployment
+
+## Step 1: Prepare Your Repository
+
+### 1.1 Create a Private GitHub Repository
+
+1. Go to [GitHub](https://github.com/new)
+2. Name your repository (e.g., `mcp-server-manager`)
+3. Set visibility to **Private**
+4. Do not initialize with README (we already have one)
+5. Click "Create repository"
+
+### 1.2 Push Code to GitHub
+
 ```bash
-# Install Wrangler CLI
-npm install -g @cloudflare/wrangler
+# Initialize git (if not already done)
+git init
 
-# Deploy the worker
-wrangler deploy --env production
+# Add all files
+git add .
+
+# Commit changes
+git commit -m "Initial commit: MCP Server Manager"
+
+# Add your GitHub repository as origin
+git remote add origin https://github.com/YOUR_USERNAME/mcp-server-manager.git
+
+# Push to main branch
+git push -u origin main
 ```
 
-### 2. Configuration
-The system is pre-configured with:
-- **Account ID**: 523d80131d8cba13f765b80d6bb9e096
-- **KV Namespaces**:
-  - Config: da1294711f1942749a6996bf3f35fe90
-  - Device Tokens: accf88bbd2b24eaba87de3722e4c1588
-  - Server State: c59b2dff9bcb46978f3b552885d7bf8a
-- **R2 Bucket**: mcp-logs
+## Step 2: Set Up Cloudflare
 
-### 3. Frontend Deployment
-Deploy the React frontend to Cloudflare Pages:
-```bash
-npm run build
-wrangler pages deploy dist
-```
+### 2.1 Create Cloudflare API Token
 
-### 4. Edge Device Setup
-Each edge device requires:
-1. Cloudflare Tunnel agent
-2. MCP edge agent with device configuration
-3. Docker/container runtime for MCP servers
+1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Go to **My Profile** > **API Tokens**
+3. Click **Create Token**
+4. Use **Custom token** template with these permissions:
+   - **Account** - Cloudflare Pages:Edit
+   - **Account** - Account Settings:Read
+   - **Zone** - Page Rules:Edit (if using custom domain)
+5. Set Account Resources to your specific account
+6. Click **Continue to summary** > **Create Token**
+7. **Copy the token** (you won't see it again!)
 
-## Architecture Alignment
+### 2.2 Get Your Account ID
 
-### MCP Server Implementation
-✅ **Real Process Management**: Uses Node.js child_process to spawn actual MCP servers
-✅ **MCP SDK Integration**: Properly integrated with @modelcontextprotocol/sdk
-✅ **Lifecycle Management**: Complete start, stop, restart, and monitoring
-✅ **Auto-restart**: Configurable retry limits and failure handling
-✅ **Logging**: Real-time log streaming to centralized R2 storage
+1. In Cloudflare Dashboard, select your account
+2. Find Account ID in the right sidebar
+3. Copy it (should be: `523d80131d8cba13f765b80d6bb9e096`)
 
-### Cloudflare Integration
-✅ **Workers Backend**: API endpoints ready for Workers deployment
-✅ **KV Storage**: Server state and configuration persistence
-✅ **R2 Logging**: Centralized log storage and retrieval
-✅ **Tunnels**: Edge device connectivity infrastructure
-✅ **Access Control**: Service tokens for secure API access
+## Step 3: Configure GitHub Secrets
 
-### Edge Device Support
-✅ **Multi-device Management**: Distributed server management
-✅ **Real-time Monitoring**: WebSocket-based live updates
-✅ **Device Authentication**: Token-based secure connectivity
-✅ **Failure Recovery**: Auto-restart and error reporting
+### 3.1 Navigate to Repository Settings
 
-## Security Features
-- Cloudflare Access for dashboard authentication
-- Service tokens for edge device API access
-- Encrypted KV storage for sensitive configuration
-- Secure tunnel connectivity for edge devices
-- Rate limiting and DDoS protection via Cloudflare
+1. Go to your GitHub repository
+2. Click **Settings** tab
+3. Navigate to **Secrets and variables** > **Actions**
 
-## Monitoring & Operations
-- Real-time dashboard with live server status
-- Centralized logging via R2 bucket
-- Performance metrics and uptime tracking
-- Device connectivity monitoring
-- Error alerting and auto-recovery
+### 3.2 Add Required Secrets
 
-## Production Readiness
-The system is now fully aligned with the original MCP server architecture specifications:
-- ✅ Proper MCP SDK integration
-- ✅ Real server process management
-- ✅ Cloudflare deployment configuration
-- ✅ Edge device connectivity
-- ✅ Enterprise-grade security and monitoring
-- ✅ Scalable distributed architecture
+Click **New repository secret** for each:
 
-Ready for immediate deployment to Cloudflare Workers infrastructure.
+| Secret Name | Value | Description |
+|-------------|-------|-------------|
+| `CLOUDFLARE_API_TOKEN` | Your API token from Step 2.1 | Authentication for Cloudflare |
+| `CLOUDFLARE_ACCOUNT_ID` | `523d80131d8cba13f765b80d6bb9e096` | Your Cloudflare account ID |
+| `DATABASE_URL` | `postgresql://...` | Production database connection string |
+| `SESSION_SECRET` | Generate a secure random string | For session encryption |
+
+### 3.3 Add Optional Secrets
+
+| Secret Name | Value | Description |
+|-------------|-------|-------------|
+| `VITE_API_URL` | `https://your-domain.com` | Custom API domain (if applicable) |
+
+## Step 4: Configure Production Database
+
+### 4.1 Using Neon Database (Recommended)
+
+1. Sign up at [Neon](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+4. Add it as `DATABASE_URL` secret in GitHub
+
+### 4.2 Database Schema Setup
+
+The GitHub Action will handle database migrations automatically. Ensure your database user has permission to create tables.
+
+## Step 5: Deploy to Cloudflare Pages
+
+### 5.1 Initial Deployment
+
+1. Make a small change to trigger deployment:
+   ```bash
+   echo "# Deployed on $(date)" >> README.md
+   git add README.md
+   git commit -m "Trigger initial deployment"
+   git push origin main
+   ```
+
+2. Go to **Actions** tab in your GitHub repository
+3. Watch the "Deploy to Cloudflare Pages" workflow run
+4. Once complete, find your site URL in the workflow logs
+
+### 5.2 Verify Deployment
+
+1. Visit the Cloudflare Pages dashboard
+2. Find your project (`mcp-server-manager`)
+3. Click on it to see deployment details
+4. Your site will be available at:
+   - `https://mcp-server-manager.pages.dev`
+   - Or your custom domain if configured
+
+## Step 6: Configure Custom Domain (Optional)
+
+### 6.1 Add Custom Domain
+
+1. In Cloudflare Pages project settings
+2. Go to **Custom domains** tab
+3. Click **Set up a custom domain**
+4. Enter your domain name
+5. Follow DNS configuration instructions
+
+### 6.2 Update Environment Variables
+
+Add your custom domain to GitHub Secrets:
+- `VITE_API_URL`: `https://your-custom-domain.com`
+
+## Step 7: Production Environment Variables
+
+### 7.1 In Cloudflare Pages Dashboard
+
+1. Go to your project settings
+2. Navigate to **Environment variables**
+3. Add production variables:
+   - `NODE_ENV`: `production`
+   - `DATABASE_URL`: Your production database URL
+   - `SESSION_SECRET`: Secure random string
+
+## Troubleshooting
+
+### Build Failures
+
+1. Check GitHub Actions logs for errors
+2. Ensure all secrets are properly set
+3. Verify Node.js version compatibility
+
+### Database Connection Issues
+
+1. Verify `DATABASE_URL` is correct
+2. Check database is accessible from Cloudflare
+3. Ensure SSL is properly configured
+
+### Deployment Not Triggering
+
+1. Ensure GitHub Actions are enabled
+2. Check workflow file syntax
+3. Verify branch name matches workflow trigger
+
+## Security Best Practices
+
+1. **Never commit secrets** to the repository
+2. **Use strong passwords** for database
+3. **Rotate API tokens** regularly
+4. **Enable 2FA** on GitHub and Cloudflare
+5. **Restrict database access** to Cloudflare IPs only
+6. **Use environment-specific** configurations
+
+## Monitoring
+
+### GitHub Actions
+
+- Monitor workflow runs in Actions tab
+- Set up email notifications for failures
+- Review deployment logs regularly
+
+### Cloudflare Analytics
+
+- Check Pages Analytics for traffic
+- Monitor Web Analytics for performance
+- Review Workers Analytics if using Workers
+
+## Rollback Procedure
+
+If deployment fails or causes issues:
+
+1. **Via Cloudflare Dashboard**:
+   - Go to project > Deployments
+   - Find previous successful deployment
+   - Click "Rollback to this deployment"
+
+2. **Via GitHub**:
+   - Revert the problematic commit
+   - Push to trigger new deployment
+
+## Maintenance
+
+### Regular Updates
+
+1. Keep dependencies updated:
+   ```bash
+   npm update
+   npm audit fix
+   ```
+
+2. Update GitHub Actions:
+   - Check for new versions of actions
+   - Update Node.js version as needed
+
+3. Database maintenance:
+   - Regular backups
+   - Monitor performance
+   - Clean up old logs
+
+## Support
+
+For deployment issues:
+- Check [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
+- Review [GitHub Actions Docs](https://docs.github.com/en/actions)
+- Open an issue in the repository
+
+## Next Steps
+
+After successful deployment:
+1. Configure monitoring and alerts
+2. Set up custom domain (if needed)
+3. Implement authentication
+4. Configure backup strategies
+5. Set up staging environment
