@@ -50,10 +50,7 @@ export default function DevicesPage() {
   // Add device mutation
   const addDeviceMutation = useMutation({
     mutationFn: async (data: { id: string; name: string }) => {
-      return apiRequest('/api/devices', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/devices', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
@@ -77,9 +74,7 @@ export default function DevicesPage() {
   // Delete device mutation
   const deleteDeviceMutation = useMutation({
     mutationFn: async (deviceId: string) => {
-      return apiRequest(`/api/devices/${deviceId}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/devices/${deviceId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
