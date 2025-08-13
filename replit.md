@@ -94,3 +94,6 @@ The system now includes proper MCP server lifecycle management:
 - Added certificate fields to edge device schema (fingerprint, subject, expiry)
 - Created middleware for certificate validation
 - Added security status indicators in the devices dashboard
+- Implemented force deletion of edge devices with active servers
+- Enhanced delete dialog to warn about server removal
+- Device deletion now automatically stops and removes all associated servers

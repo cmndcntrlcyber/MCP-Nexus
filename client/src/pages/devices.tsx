@@ -76,13 +76,18 @@ export default function DevicesPage() {
     mutationFn: async (deviceId: string) => {
       return apiRequest('DELETE', `/api/devices/${deviceId}`);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
       setShowDeleteDialog(false);
       setSelectedDevice(null);
+      
+      const serversRemoved = data?.serversRemoved || 0;
       toast({
         title: "Device Removed",
-        description: "Edge device has been successfully removed.",
+        description: serversRemoved > 0 
+          ? `Edge device and ${serversRemoved} server(s) have been successfully removed.`
+          : "Edge device has been successfully removed.",
       });
     },
     onError: (error: any) => {
@@ -421,11 +426,13 @@ export default function DevicesPage() {
             <AlertDialogDescription>
               Are you sure you want to remove "{selectedDevice?.name}"? 
               {selectedDevice && getDeviceServerCount(selectedDevice.id) > 0 && (
-                <span className="block mt-2 text-red-600">
-                  This device has {getDeviceServerCount(selectedDevice.id)} active server(s). 
-                  Please stop or reassign them first.
+                <span className="block mt-2 text-yellow-600 font-semibold">
+                  ⚠️ Warning: This device has {getDeviceServerCount(selectedDevice.id)} active server(s) that will be stopped and removed.
                 </span>
               )}
+              <span className="block mt-2 text-gray-600">
+                This action cannot be undone.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -233,27 +233,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/devices/:id', async (req, res) => {
     try {
-      // Check if device has any active servers
-      const servers = await storage.getServersByDevice(req.params.id);
-      if (servers.length > 0) {
-        return res.status(400).json({ 
-          error: 'Cannot delete device with active servers',
-          serverCount: servers.length 
-        });
-      }
-
-      const deleted = await storage.deleteEdgeDevice(req.params.id);
-      if (!deleted) {
+      // Get device first to ensure it exists
+      const device = await storage.getEdgeDevice(req.params.id);
+      if (!device) {
         return res.status(404).json({ error: 'Device not found' });
       }
 
+      // Get all servers associated with this device
+      const servers = await storage.getServersByDevice(req.params.id);
+      
+      // Stop and delete all servers on this device
+      for (const server of servers) {
+        try {
+          // Stop the server if it's running
+          if (server.status === 'running') {
+            await storage.updateServer(server.id, { status: 'stopped', pid: null });
+          }
+          // Delete the server
+          await storage.deleteServer(server.id);
+          console.log(`Deleted server ${server.name} (${server.id}) from device ${req.params.id}`);
+        } catch (err) {
+          console.error(`Failed to delete server ${server.id}:`, err);
+        }
+      }
+
+      // Now delete the device
+      const deleted = await storage.deleteEdgeDevice(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ error: 'Failed to delete device after removing servers' });
+      }
+
+      // Broadcast updates
       broadcast({
         type: 'device_deleted',
-        data: { id: req.params.id }
+        data: { 
+          id: req.params.id,
+          serversRemoved: servers.length 
+        }
       });
 
-      res.json({ success: true });
+      // Also broadcast server deletions
+      for (const server of servers) {
+        broadcast({
+          type: 'server_deleted',
+          data: { id: server.id }
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Device deleted successfully. ${servers.length} server(s) were removed.`,
+        serversRemoved: servers.length 
+      });
     } catch (error) {
+      console.error('Failed to delete device:', error);
       res.status(500).json({ error: 'Failed to delete device' });
     }
   });
