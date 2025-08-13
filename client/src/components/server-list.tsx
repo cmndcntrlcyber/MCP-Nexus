@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Server } from "@shared/schema";
 
 interface ServerListProps {
@@ -10,6 +15,8 @@ interface ServerListProps {
 
 export function ServerList({ servers, onServerSelect, selectedServerId }: ServerListProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
 
   const startServerMutation = useMutation({
     mutationFn: (serverId: string) => apiRequest('POST', `/api/servers/${serverId}/start`),
@@ -32,6 +39,27 @@ export function ServerList({ servers, onServerSelect, selectedServerId }: Server
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+  });
+
+  const deleteServerMutation = useMutation({
+    mutationFn: (serverId: string) => apiRequest('DELETE', `/api/servers/${serverId}`),
+    onSuccess: (_, serverId) => {
+      const server = servers.find(s => s.id === serverId);
+      toast({
+        title: "Server deleted",
+        description: `${server?.name || 'Server'} has been deleted successfully.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting server",
+        description: "Failed to delete the server. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Delete server error:', error);
     },
   });
 
@@ -158,6 +186,45 @@ export function ServerList({ servers, onServerSelect, selectedServerId }: Server
                     >
                       <span className="material-icons text-lg">stop</span>
                     </button>
+                    <Dialog open={deleteDialogOpen === server.id} onOpenChange={(open) => setDeleteDialogOpen(open ? server.id : null)}>
+                      <DialogTrigger asChild>
+                        <button 
+                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteDialogOpen(server.id);
+                          }}
+                          data-testid={`button-delete-${server.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete Server</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to delete "{server.name}"? This action cannot be undone.
+                            The server will be stopped and all its data will be removed.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setDeleteDialogOpen(null)}>
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              deleteServerMutation.mutate(server.id);
+                              setDeleteDialogOpen(null);
+                            }}
+                            disabled={deleteServerMutation.isPending}
+                            data-testid={`confirm-delete-${server.id}`}
+                          >
+                            {deleteServerMutation.isPending ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </div>

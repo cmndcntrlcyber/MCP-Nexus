@@ -174,6 +174,14 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.servers.set(id, server);
+    
+    // Also create in MCP manager if available
+    try {
+      await this.mcpManager.createServer(insertServer);
+    } catch (error) {
+      console.error('Failed to create MCP server:', error);
+    }
+    
     return server;
   }
 
@@ -191,10 +199,28 @@ export class MemStorage implements IStorage {
   }
 
   async deleteServer(id: string): Promise<boolean> {
-    const deleted = this.servers.delete(id);
-    if (deleted) {
-      this.serverLogs.delete(id);
+    const server = this.servers.get(id);
+    if (!server) {
+      return false;
     }
+    
+    // Stop and remove from MCP manager first
+    try {
+      await this.mcpManager.removeServer(id);
+    } catch (error) {
+      console.error('Failed to remove MCP server:', error);
+    }
+    
+    // Clear server logs
+    this.serverLogs.delete(id);
+    
+    // Remove from storage
+    const deleted = this.servers.delete(id);
+    
+    if (deleted) {
+      console.log(`Server ${server.name} (${id}) deleted successfully`);
+    }
+    
     return deleted;
   }
 
