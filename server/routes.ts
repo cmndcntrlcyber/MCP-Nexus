@@ -200,6 +200,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/devices/:id', async (req, res) => {
+    try {
+      const device = await storage.getEdgeDevice(req.params.id);
+      if (!device) {
+        return res.status(404).json({ error: 'Device not found' });
+      }
+      res.json(device);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch device' });
+    }
+  });
+
+  app.post('/api/devices', async (req, res) => {
+    try {
+      const validatedData = insertEdgeDeviceSchema.parse(req.body);
+      const device = await storage.createEdgeDevice(validatedData);
+      
+      broadcast({
+        type: 'device_created',
+        data: device
+      });
+
+      res.status(201).json(device);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create device' });
+    }
+  });
+
+  app.delete('/api/devices/:id', async (req, res) => {
+    try {
+      // Check if device has any active servers
+      const servers = await storage.getServersByDevice(req.params.id);
+      if (servers.length > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete device with active servers',
+          serverCount: servers.length 
+        });
+      }
+
+      const deleted = await storage.deleteEdgeDevice(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Device not found' });
+      }
+
+      broadcast({
+        type: 'device_deleted',
+        data: { id: req.params.id }
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete device' });
+    }
+  });
+
   app.post('/api/devices/:id/heartbeat', async (req, res) => {
     try {
       const device = await storage.updateEdgeDevice(req.params.id, {
@@ -218,6 +276,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ error: 'Failed to update device heartbeat' });
     }
+  });
+
+  // Cloudflare tunnel detection endpoint
+  app.post('/api/devices/register-tunnel', async (req, res) => {
+    try {
+      const { tunnelId, tunnelName, clientIp, region } = req.body;
+      
+      // Check if device already exists
+      let device = await storage.getEdgeDevice(tunnelId);
+      
+      if (!device) {
+        // Auto-register new device from Cloudflare tunnel
+        device = await storage.createEdgeDevice({
+          id: tunnelId,
+          name: tunnelName || `Cloudflare Tunnel ${tunnelId.slice(0, 8)}`,
+          status: 'online',
+          lastSeen: new Date(),
+          metadata: {
+            type: 'cloudflare-tunnel',
+            clientIp,
+            region,
+            autoRegistered: true,
+            registeredAt: new Date().toISOString()
+          }
+        });
+
+        broadcast({
+          type: 'device_created',
+          data: device
+        });
+
+        console.log(`Auto-registered new device from Cloudflare tunnel: ${device.name}`);
+      } else {
+        // Update existing device
+        device = await storage.updateEdgeDevice(tunnelId, {
+          status: 'online',
+          lastSeen: new Date(),
+          metadata: {
+            ...device.metadata,
+            lastClientIp: clientIp,
+            lastRegion: region,
+            lastSeen: new Date().toISOString()
+          }
+        });
+
+        broadcast({
+          type: 'device_updated',
+          data: device
+        });
+      }
+
+      res.json({ success: true, device });
+    } catch (error) {
+      console.error('Failed to register tunnel device:', error);
+      res.status(500).json({ error: 'Failed to register tunnel device' });
+    }
+  });
+
+  // Middleware to detect Cloudflare tunnel connections
+  app.use((req, res, next) => {
+    // Check for Cloudflare headers
+    const cfRay = req.headers['cf-ray'];
+    const cfConnectingIp = req.headers['cf-connecting-ip'];
+    const cfIpcountry = req.headers['cf-ipcountry'];
+    const cfTunnelId = req.headers['cf-access-authenticated-user-email'] || req.headers['cf-worker'];
+    
+    if (cfRay && cfConnectingIp) {
+      // This is a Cloudflare connection
+      const tunnelId = cfTunnelId || `cf-tunnel-${cfRay.slice(0, 8)}`;
+      
+      // Auto-register tunnel device if not already registered
+      storage.getEdgeDevice(tunnelId).then(device => {
+        if (!device) {
+          console.log(`Detected new Cloudflare tunnel connection: ${tunnelId}`);
+          
+          storage.createEdgeDevice({
+            id: tunnelId,
+            name: `Cloudflare Tunnel (${cfIpcountry || 'Unknown Region'})`,
+            status: 'online',
+            lastSeen: new Date(),
+            metadata: {
+              type: 'cloudflare-tunnel',
+              clientIp: cfConnectingIp,
+              region: cfIpcountry,
+              cfRay,
+              autoRegistered: true,
+              detectedAt: new Date().toISOString()
+            }
+          }).then(newDevice => {
+            broadcast({
+              type: 'device_created',
+              data: newDevice
+            });
+            console.log(`Auto-registered Cloudflare tunnel device: ${newDevice.name}`);
+          });
+        }
+      }).catch(err => {
+        console.error('Error checking tunnel device:', err);
+      });
+    }
+    
+    next();
   });
 
   // Server logs routes

@@ -107,7 +107,7 @@ export class MemStorage implements IStorage {
         deviceId: "edge-device-001",
         command: "npx",
         args: ["@modelcontextprotocol/server-github"],
-        env: { GITHUB_TOKEN: "demo-token" },
+        env: { GITHUB_TOKEN: "demo-token" } as Record<string, string>,
         status: "stopped" as const,
         autoRestart: true,
         maxRestarts: 3,
@@ -118,7 +118,7 @@ export class MemStorage implements IStorage {
         deviceId: "edge-device-003",
         command: "node",
         args: ["weather-server.js"],
-        env: { API_KEY: "weather-key" },
+        env: { API_KEY: "weather-key" } as Record<string, string>,
         status: "running" as const,
         autoRestart: true,
         maxRestarts: 3,
@@ -159,10 +159,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.servers.values());
   }
 
-  async getServersByDevice(deviceId: string): Promise<Server[]> {
-    return Array.from(this.servers.values()).filter(server => server.deviceId === deviceId);
-  }
-
   async createServer(insertServer: InsertServer): Promise<Server> {
     const id = randomUUID();
     const server: Server = {
@@ -170,7 +166,7 @@ export class MemStorage implements IStorage {
       name: insertServer.name,
       deviceId: insertServer.deviceId,
       command: insertServer.command,
-      args: insertServer.args || [],
+      args: insertServer.args || [] as string[],
       env: insertServer.env || {},
       status: insertServer.status || 'stopped',
       pid: null,
@@ -269,6 +265,10 @@ export class MemStorage implements IStorage {
 
   async deleteEdgeDevice(id: string): Promise<boolean> {
     return this.edgeDevices.delete(id);
+  }
+
+  async getServersByDevice(deviceId: string): Promise<Server[]> {
+    return Array.from(this.servers.values()).filter(server => server.deviceId === deviceId);
   }
 
   // Server log operations
