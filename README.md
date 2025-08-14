@@ -1,4 +1,4 @@
-# MCP Server Manager
+# ![](https://github.com/user-attachments/assets/b9151e5c-5604-40b9-93c1-f7ce975ef75a) MCP Nexus
 
 A comprehensive Model Context Protocol (MCP) Server Manager with real-time monitoring, edge device management, and Cloudflare deployment capabilities.
 
