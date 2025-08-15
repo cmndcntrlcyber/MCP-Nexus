@@ -1,0 +1,24 @@
+{
+  "name": "mcp-nexus-orchestrator",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP Nexus Orchestrator for coordinating cybersecurity workflows",
+  "main": "nexus-server.ts",
+  "scripts": {
+    "start": "tsx nexus-server.ts",
+    "dev": "tsx watch nexus-server.ts",
+    "build": "tsc",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "axios": "^1.6.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.11",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.1",
+    "typescript": "5.6.3"
+  }
+}
