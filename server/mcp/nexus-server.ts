@@ -9,7 +9,7 @@ import {
   McpError,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { MCPClientManager, MCPClientConfig } from './MCPClientManager.js';
+import { BridgeClientManager, BridgeClientConfig } from './BridgeClientManager.js';
 import { MCPServerManager } from './MCPServerManager.js';
 
 interface WorkflowDefinition {
@@ -28,7 +28,7 @@ interface WorkflowDefinition {
 
 class MCPNexusServer {
   private server: Server;
-  private clientManager: MCPClientManager;
+  private clientManager: BridgeClientManager;
   private serverManager: MCPServerManager;
   private workflows: Map<string, WorkflowDefinition> = new Map();
 
@@ -46,7 +46,7 @@ class MCPNexusServer {
       }
     );
 
-    this.clientManager = new MCPClientManager();
+    this.clientManager = new BridgeClientManager();
     this.serverManager = new MCPServerManager();
 
     this.setupResourceHandlers();
@@ -63,39 +63,105 @@ class MCPNexusServer {
 
   private async initializeClients() {
     try {
-      // Initialize attack-node client
+      // Get bridge configuration from environment variables
+      const offsecApiUrl = process.env.OFFSEC_API_URL || 'https://offsec-team.attck-community.workers.dev';
+      const researchMcpUrl = process.env.RESEARCH_MCP_URL || 'https://research-agent-mcp.attck-community.workers.dev';
+      const bearerToken = process.env.BRIDGE_BEARER_TOKEN || '';
+      const apiKey = process.env.BRIDGE_API_KEY || '';
+
+      // Initialize bug_hunter client (vulnerability scanning)
       await this.clientManager.addClient({
-        id: 'attack-node',
-        name: 'Attack Node MCP Client',
-        type: 'attack-node',
-        baseUrl: process.env.ATTACK_NODE_MCP_URL || 'http://localhost:3001',
+        id: 'bug_hunter',
+        name: 'Bug Hunter Security Scanner',
+        type: 'bug_hunter',
+        baseUrl: offsecApiUrl,
+        bearerToken,
+        apiKey,
         capabilities: [
-          'web_vulnerability_testing',
-          'framework_security_analysis', 
-          'burp_suite_integration',
-          'empire_c2_operations'
+          'vulnerability_scan',
+          'framework_detection', 
+          'security_analysis'
         ],
-        healthCheckInterval: 30000
+        healthCheckInterval: 30000,
+        maxRetries: 3,
+        requestTimeout: 30000
       });
 
-      // Initialize rtpi-pen client
+      // Initialize rt_dev client (red team development)
       await this.clientManager.addClient({
-        id: 'rtpi-pen',
-        name: 'RTPI-Pen MCP Client',
-        type: 'rtpi-pen', 
-        baseUrl: process.env.RTPI_PEN_MCP_URL || 'http://localhost:3002',
+        id: 'rt_dev',
+        name: 'Red Team Development',
+        type: 'rt_dev',
+        baseUrl: offsecApiUrl,
+        bearerToken,
+        apiKey,
         capabilities: [
-          'container_management',
-          'infrastructure_orchestration',
-          'service_deployment',
-          'monitoring_and_backup'
+          'code_generation',
+          'infrastructure_deployment',
+          'payload_creation'
         ],
-        healthCheckInterval: 30000
+        healthCheckInterval: 30000,
+        maxRetries: 3,
+        requestTimeout: 30000
       });
 
-      console.log('MCP clients initialized successfully');
+      // Initialize burpsuite_operator client
+      await this.clientManager.addClient({
+        id: 'burpsuite_operator',
+        name: 'Burp Suite Operator',
+        type: 'burpsuite_operator',
+        baseUrl: offsecApiUrl,
+        bearerToken,
+        apiKey,
+        capabilities: [
+          'web_scan',
+          'proxy_analysis',
+          'payload_testing'
+        ],
+        healthCheckInterval: 30000,
+        maxRetries: 3,
+        requestTimeout: 30000
+      });
+
+      // Initialize daedelu5 client (penetration testing)
+      await this.clientManager.addClient({
+        id: 'daedelu5',
+        name: 'Daedelu5 Penetration Tester',
+        type: 'daedelu5',
+        baseUrl: offsecApiUrl,
+        bearerToken,
+        apiKey,
+        capabilities: [
+          'compliance_check',
+          'audit_analysis',
+          'advanced_testing'
+        ],
+        healthCheckInterval: 30000,
+        maxRetries: 3,
+        requestTimeout: 30000
+      });
+
+      // Initialize nexus_kamuy client (workflow orchestration)
+      await this.clientManager.addClient({
+        id: 'nexus_kamuy',
+        name: 'Nexus Kamuy Orchestrator',
+        type: 'nexus_kamuy',
+        baseUrl: offsecApiUrl,
+        bearerToken,
+        apiKey,
+        capabilities: [
+          'workflow_orchestration',
+          'task_coordination',
+          'agent_management'
+        ],
+        healthCheckInterval: 30000,
+        maxRetries: 3,
+        requestTimeout: 30000
+      });
+
+      console.log('Bridge clients initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize MCP clients:', error);
+      console.error('Failed to initialize bridge clients:', error);
     }
   }
 
@@ -365,32 +431,32 @@ class MCPNexusServer {
           workflowSteps = [
             {
               name: 'web_vulnerability_scan',
-              clientId: 'attack-node',
-              toolName: 'test_web_vulnerabilities',
-              parameters: { target_url: target, ...parameters }
+              clientId: 'bug_hunter',
+              toolName: 'vulnerability_scan',
+              parameters: { target_url: target, scan_type: 'comprehensive', ...parameters }
             },
             {
               name: 'framework_analysis',
-              clientId: 'attack-node',
-              toolName: 'scan_framework_security',
+              clientId: 'bug_hunter',
+              toolName: 'framework_detection',
               parameters: { target_url: target }
             },
             {
-              name: 'infrastructure_monitoring',
-              clientId: 'rtpi-pen',
-              toolName: 'monitor_infrastructure',
-              parameters: { duration: 120 }
+              name: 'burp_suite_scan',
+              clientId: 'burpsuite_operator',
+              toolName: 'web_scan',
+              parameters: { target_url: target, scan_depth: 'standard' }
             },
             {
               name: 'generate_report',
-              clientId: 'attack-node',
-              toolName: 'generate_vulnerability_report',
+              clientId: 'bug_hunter',
+              toolName: 'security_analysis',
               parameters: { 
-                scan_results: [], 
-                target_info: { name: workflow_name, url: target },
+                target_url: target,
+                assessment_name: workflow_name,
                 report_format: 'json'
               },
-              dependsOn: ['web_vulnerability_scan', 'framework_analysis']
+              dependsOn: ['web_vulnerability_scan', 'framework_analysis', 'burp_suite_scan']
             }
           ];
           break;
@@ -398,25 +464,32 @@ class MCPNexusServer {
         case 'penetration_test':
           workflowSteps = [
             {
-              name: 'start_empire_listener',
-              clientId: 'attack-node',
-              toolName: 'start_empire_listener',
+              name: 'payload_generation',
+              clientId: 'rt_dev',
+              toolName: 'payload_creation',
               parameters: { 
-                listener_name: `${workflow_name}_listener`,
-                port: 8080 + Math.floor(Math.random() * 1000)
+                target: target,
+                payload_type: 'web_shell',
+                format: 'php'
               }
             },
             {
               name: 'comprehensive_scan',
-              clientId: 'attack-node',
-              toolName: 'orchestrate_burp_scan',
-              parameters: { target_url: target }
+              clientId: 'burpsuite_operator',
+              toolName: 'web_scan',
+              parameters: { target_url: target, scan_type: 'comprehensive' }
             },
             {
-              name: 'infrastructure_backup',
-              clientId: 'rtpi-pen',
-              toolName: 'backup_data',
-              parameters: { backup_type: 'configs' }
+              name: 'advanced_testing',
+              clientId: 'daedelu5',
+              toolName: 'advanced_testing',
+              parameters: { target: target, test_type: 'penetration' }
+            },
+            {
+              name: 'vulnerability_analysis',
+              clientId: 'bug_hunter',
+              toolName: 'vulnerability_scan',
+              parameters: { target_url: target, depth: 'deep' }
             }
           ];
           break;
@@ -424,16 +497,31 @@ class MCPNexusServer {
         case 'compliance_audit':
           workflowSteps = [
             {
-              name: 'infrastructure_monitoring',
-              clientId: 'rtpi-pen',
-              toolName: 'monitor_infrastructure',
-              parameters: { duration: 300, metrics: ['cpu', 'memory', 'disk', 'containers'] }
+              name: 'compliance_assessment',
+              clientId: 'daedelu5',
+              toolName: 'compliance_check',
+              parameters: { 
+                target: target,
+                standards: ['owasp', 'nist', 'iso27001'],
+                audit_depth: 'comprehensive'
+              }
             },
             {
-              name: 'service_health_check',
-              clientId: 'rtpi-pen',
-              toolName: 'manage_container',
-              parameters: { container_name: 'rtpi-database', action: 'logs' }
+              name: 'security_analysis',
+              clientId: 'bug_hunter',
+              toolName: 'security_analysis',
+              parameters: { target_url: target, compliance_mode: true }
+            },
+            {
+              name: 'audit_report',
+              clientId: 'daedelu5',
+              toolName: 'audit_analysis',
+              parameters: { 
+                target: target,
+                compliance_results: {},
+                report_format: 'detailed'
+              },
+              dependsOn: ['compliance_assessment', 'security_analysis']
             }
           ];
           break;
@@ -441,16 +529,30 @@ class MCPNexusServer {
         case 'infrastructure_scan':
           workflowSteps = [
             {
-              name: 'container_inventory',
-              clientId: 'rtpi-pen',
-              toolName: 'monitor_infrastructure',
-              parameters: { metrics: ['containers'] }
+              name: 'infrastructure_deployment',
+              clientId: 'rt_dev',
+              toolName: 'infrastructure_deployment',
+              parameters: { 
+                target: target,
+                scan_type: 'infrastructure',
+                deployment_check: true
+              }
             },
             {
               name: 'security_assessment',
-              clientId: 'attack-node',
-              toolName: 'test_web_vulnerabilities',
-              parameters: { target_url: target }
+              clientId: 'bug_hunter',
+              toolName: 'vulnerability_scan',
+              parameters: { target_url: target, focus: 'infrastructure' }
+            },
+            {
+              name: 'workflow_coordination',
+              clientId: 'nexus_kamuy',
+              toolName: 'workflow_orchestration',
+              parameters: {
+                workflow_type: 'infrastructure_scan',
+                coordination_data: {}
+              },
+              dependsOn: ['infrastructure_deployment', 'security_assessment']
             }
           ];
           break;
@@ -514,9 +616,9 @@ class MCPNexusServer {
         switch (scopeItem) {
           case 'web_vulnerabilities':
             const webScanResult = await this.clientManager.invokeToolOnClient(
-              'attack-node',
-              'test_web_vulnerabilities',
-              { target_url }
+              'bug_hunter',
+              'vulnerability_scan',
+              { target_url, scan_type: 'comprehensive' }
             );
             assessmentPlan.tasks.push({
               type: 'web_vulnerabilities',
@@ -527,9 +629,9 @@ class MCPNexusServer {
 
           case 'infrastructure':
             const infraResult = await this.clientManager.invokeToolOnClient(
-              'rtpi-pen',
-              'monitor_infrastructure',
-              { duration: 60, metrics: ['cpu', 'memory', 'containers'] }
+              'rt_dev',
+              'infrastructure_deployment',
+              { target: target_url, deployment_type: 'analysis', duration: 60 }
             );
             assessmentPlan.tasks.push({
               type: 'infrastructure',
@@ -540,8 +642,8 @@ class MCPNexusServer {
 
           case 'framework_analysis':
             const frameworkResult = await this.clientManager.invokeToolOnClient(
-              'attack-node',
-              'scan_framework_security',
+              'bug_hunter',
+              'framework_detection',
               { target_url }
             );
             assessmentPlan.tasks.push({
@@ -550,16 +652,29 @@ class MCPNexusServer {
               timestamp: new Date().toISOString()
             });
             break;
+
+          case 'compliance':
+            const complianceResult = await this.clientManager.invokeToolOnClient(
+              'daedelu5',
+              'compliance_check',
+              { target: target_url, standards: ['owasp', 'nist'] }
+            );
+            assessmentPlan.tasks.push({
+              type: 'compliance',
+              result: complianceResult,
+              timestamp: new Date().toISOString()
+            });
+            break;
         }
       }
 
       // Generate comprehensive report
       const reportResult = await this.clientManager.invokeToolOnClient(
-        'attack-node',
-        'generate_vulnerability_report',
+        'bug_hunter',
+        'security_analysis',
         {
-          scan_results: assessmentPlan.tasks.map(t => t.result),
-          target_info: { name: 'Security Assessment', url: target_url },
+          target_url,
+          assessment_name: 'Security Assessment',
           report_format: 'json'
         }
       );
@@ -614,14 +729,16 @@ class MCPNexusServer {
 
       // Deploy services to appropriate systems
       for (const service of services) {
-        const targetSystem = service.target_system || 'rtpi-pen';
+        const targetSystem = service.target_system === 'attack-node' ? 'rt_dev' : 
+                           service.target_system === 'rtpi-pen' ? 'rt_dev' : 'rt_dev';
         
         const deployResult = await this.clientManager.invokeToolOnClient(
           targetSystem,
-          'deploy_service',
+          'infrastructure_deployment',
           {
             service_name: service.name,
             image: service.image,
+            deployment_type: 'service',
             config: service.configuration || {}
           }
         );
@@ -680,9 +797,9 @@ class MCPNexusServer {
       // Phase 1: Reconnaissance and Information Gathering
       if (test_scope.network_infrastructure) {
         const infraScanResult = await this.clientManager.invokeToolOnClient(
-          'rtpi-pen',
-          'monitor_infrastructure',
-          { duration: 120, metrics: ['network', 'containers'] }
+          'rt_dev',
+          'infrastructure_deployment',
+          { target: target, deployment_type: 'reconnaissance', duration: 120 }
         );
         
         penTestPlan.phases.push({
@@ -696,9 +813,9 @@ class MCPNexusServer {
       // Phase 2: Vulnerability Discovery
       if (test_scope.web_application) {
         const webVulnResult = await this.clientManager.invokeToolOnClient(
-          'attack-node',
-          'test_web_vulnerabilities',
-          { target_url: target }
+          'bug_hunter',
+          'vulnerability_scan',
+          { target_url: target, scan_type: 'deep' }
         );
         
         penTestPlan.phases.push({
@@ -710,9 +827,9 @@ class MCPNexusServer {
 
         // Follow up with Burp Suite scan
         const burpResult = await this.clientManager.invokeToolOnClient(
-          'attack-node',
-          'orchestrate_burp_scan',
-          { target_url: target }
+          'burpsuite_operator',
+          'web_scan',
+          { target_url: target, scan_type: 'comprehensive' }
         );
         
         penTestPlan.phases.push({
@@ -724,29 +841,48 @@ class MCPNexusServer {
       }
 
       // Phase 3: Exploitation Setup
-      const empireListenerResult = await this.clientManager.invokeToolOnClient(
-        'attack-node',
-        'start_empire_listener',
+      const payloadResult = await this.clientManager.invokeToolOnClient(
+        'rt_dev',
+        'payload_creation',
         {
-          listener_name: `pentest_${penTestPlan.test_id}`,
-          port: 8080 + Math.floor(Math.random() * 1000)
+          target: target,
+          payload_type: 'reverse_shell',
+          format: 'php'
         }
       );
       
       penTestPlan.phases.push({
         phase: 'exploitation_setup',
-        type: 'empire_listener',
-        result: empireListenerResult,
+        type: 'payload_generation',
+        result: payloadResult,
         timestamp: new Date().toISOString()
       });
 
-      // Phase 4: Reporting
-      const reportResult = await this.clientManager.invokeToolOnClient(
-        'attack-node',
-        'generate_vulnerability_report',
+      // Phase 4: Advanced Testing
+      const advancedTestResult = await this.clientManager.invokeToolOnClient(
+        'daedelu5',
+        'advanced_testing',
         {
-          scan_results: penTestPlan.phases.map(p => p.result),
-          target_info: { name: `Penetration Test - ${target}`, url: target },
+          target: target,
+          test_type: 'penetration',
+          methodology: test_methodology
+        }
+      );
+      
+      penTestPlan.phases.push({
+        phase: 'advanced_testing',
+        type: 'penetration_testing',
+        result: advancedTestResult,
+        timestamp: new Date().toISOString()
+      });
+
+      // Phase 5: Reporting
+      const reportResult = await this.clientManager.invokeToolOnClient(
+        'bug_hunter',
+        'security_analysis',
+        {
+          target_url: target,
+          assessment_name: `Penetration Test - ${target}`,
           report_format: 'json'
         }
       );
@@ -853,23 +989,53 @@ class MCPNexusServer {
           try {
             let healthData: any = {};
             
-            if (client.id === 'rtpi-pen') {
-              const infraHealth = await this.clientManager.invokeToolOnClient(
-                'rtpi-pen',
-                'monitor_infrastructure',
-                { duration: 30, metrics }
-              );
-              healthData = infraHealth;
-            } else if (client.id === 'attack-node') {
-              // Get attack-node health through resource
-              healthData = { status: 'healthy', client_type: 'attack-node' };
+            // Get health data based on client type
+            switch (client.id) {
+              case 'bug_hunter':
+                healthData = await this.clientManager.invokeToolOnClient(
+                  'bug_hunter',
+                  'security_analysis',
+                  { target_url: 'health_check', health_mode: true }
+                );
+                break;
+              case 'rt_dev':
+                healthData = await this.clientManager.invokeToolOnClient(
+                  'rt_dev',
+                  'infrastructure_deployment',
+                  { deployment_type: 'health_check', duration: 10 }
+                );
+                break;
+              case 'burpsuite_operator':
+                healthData = await this.clientManager.invokeToolOnClient(
+                  'burpsuite_operator',
+                  'web_scan',
+                  { target_url: 'health_check', scan_type: 'ping' }
+                );
+                break;
+              case 'daedelu5':
+                healthData = await this.clientManager.invokeToolOnClient(
+                  'daedelu5',
+                  'compliance_check',
+                  { target: 'health_check', audit_type: 'status' }
+                );
+                break;
+              case 'nexus_kamuy':
+                healthData = await this.clientManager.invokeToolOnClient(
+                  'nexus_kamuy',
+                  'workflow_orchestration',
+                  { workflow_type: 'health_check' }
+                );
+                break;
+              default:
+                healthData = { status: 'healthy', client_type: client.type };
             }
 
             monitoringSession.client_status[client.id] = {
               connected: client.connected,
               last_health_check: client.lastHealthCheck,
               health_data: healthData,
-              capabilities: client.capabilities
+              capabilities: client.capabilities,
+              circuit_breaker_open: client.circuitBreakerOpen || false
             };
 
           } catch (error) {
@@ -878,6 +1044,11 @@ class MCPNexusServer {
               error: error instanceof Error ? error.message : String(error)
             };
           }
+        } else {
+          monitoringSession.client_status[client.id] = {
+            connected: false,
+            status: 'disconnected'
+          };
         }
       }
 

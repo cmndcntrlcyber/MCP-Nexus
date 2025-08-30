@@ -5,9 +5,10 @@ import axios, { AxiosInstance } from 'axios';
 export interface MCPClientConfig {
   id: string;
   name: string;
-  type: 'attack-node' | 'rtpi-pen' | 'nexus-kamuy';
+  type: 'bug_hunter' | 'rt_dev' | 'burpsuite_operator' | 'daedelu5' | 'nexus_kamuy';
   baseUrl: string;
   apiKey?: string;
+  bearerToken?: string;
   websocketUrl?: string;
   capabilities: string[];
   healthCheckInterval?: number;
@@ -23,9 +24,20 @@ export interface MCPToolInvocation {
 export interface MCPToolResult {
   success: boolean;
   data?: any;
+  result?: any;
   error?: string;
   executionTime?: number;
   correlationId?: string;
+  agent?: string;
+  capability?: string;
+  endpoint_source?: string;
+}
+
+export interface BridgeExecutePayload {
+  tool_name: string;
+  agent: string;
+  parameters: Record<string, any>;
+  request_id: string;
 }
 
 export class MCPClientInstance extends EventEmitter {
