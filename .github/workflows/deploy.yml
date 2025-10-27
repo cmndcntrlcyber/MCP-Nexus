@@ -50,7 +50,7 @@ jobs:
       - name: Upload build artifacts
         # Always upload artifacts for debugging
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-output
           path: dist/
